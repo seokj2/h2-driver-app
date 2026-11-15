@@ -3,7 +3,6 @@ package kr.bighero.h2.driver
 import kr.bighero.h2.core.DaySim
 import kr.bighero.h2.core.Plan
 import kr.bighero.h2.core.clock
-import kr.bighero.h2.core.won
 
 /** 기사에게 보여 줄 한 안: 성격(이름)과 기사 입장의 한 줄 설명 */
 data class Pick(val plan: Plan, val tag: String, val note: String)
@@ -47,14 +46,14 @@ fun pickPlans(sim: DaySim, all: List<Plan>, light: List<Plan> = emptyList()): Li
                 if (p.charge != null) add("가는 길에 충전까지 해서")
                 add("끝날 때 수소 %.0f%% 남아요".format(p.endH2 / sim.world.tank * 100))
             }
-            out += Pick(p, "마음 편한 일정", why.joinToString(" ") + " · 1안보다 ${won(best.v - p.v)} 적음")
+            out += Pick(p, "마음 편한 일정", why.joinToString(" ") + " · ${clock(p.planEnd)}에 끝나요")
         }
 
     for (p in all) {
         if (out.size >= 3) break
         if (!ok(p)) continue
         used += key(p)
-        out += Pick(p, "다른 조합", "일 ${p.jobs.size}건, ${clock(p.planEnd)}에 끝나요 · 1안보다 ${won(best.v - p.v)} 적음")
+        out += Pick(p, "다른 일정", "일 ${p.jobs.size}건, ${clock(p.planEnd)}에 끝나요 · 중간에 쉬는 틈 ${DaySim.fmtH(p.totals.idleH + p.totals.waitH)}")
     }
     return out
 }

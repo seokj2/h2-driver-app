@@ -112,7 +112,6 @@ fun H2Screen(vm: DriverViewModel, ui: UiState) {
                 ChargerLive(vm, c, ui.now)
                 KeyVal("운영", "${clock(c.open)}~${clock(c.close)}" + (c.brk?.let { " (쉬는 시간 ${clock(it[0])}~${clock(it[1])})" } ?: ""))
                 KeyVal("충전 속도", "%.0fkg/시간 · 50kg 약 %.0f분".format(c.rate_kg_h, c.setup_min + 50 / c.rate_kg_h * 60))
-                KeyVal("단가", "${won(c.price_krw_kg)}/kg")
                 KeyVal("트랙터 충전기", "${c.cap}기")
             }
         }

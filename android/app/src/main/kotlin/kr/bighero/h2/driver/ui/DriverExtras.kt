@@ -343,7 +343,6 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
     val waiting = now < s.start
     val f = ((now - s.start) / (s.end - s.start)).coerceIn(0.0, 1.0)
     val addKg = (s.h2End - s.h2Start).coerceAtLeast(0.0)
-    val price = c?.price_krw_kg ?: 0.0
     val clk: (Double) -> String = { kr.bighero.h2.core.clock(it) }
     Column(modifier.clip(RoundedCornerShape(18.dp)).background(C.panel).border(1.dp, C.line, RoundedCornerShape(18.dp)).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -397,6 +396,6 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
             style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
         Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분 (예시)", color = C.sub, style = MaterialTheme.typography.bodyMedium)
-        Text("충전 %.1fkg · %s · 영수증은 회사로 자동 정산 (예시)".format(addKg, kr.bighero.h2.core.won(addKg * price)), color = C.sub, style = MaterialTheme.typography.bodyMedium)
+        Text("충전 %.1fkg · 결제는 회사 카드, 영수증은 회사로 자동 정산 (예시)".format(addKg), color = C.sub, style = MaterialTheme.typography.bodyMedium)
     }
 }

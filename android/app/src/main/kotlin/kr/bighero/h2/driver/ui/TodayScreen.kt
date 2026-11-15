@@ -193,7 +193,7 @@ private fun Recommendation(vm: DriverViewModel, ui: UiState) {
             return@Panel
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            plans.take(3).forEachIndexed { i, p -> SmallButton("${i + 1}안 ${ui.picks.getOrNull(i)?.tag ?: won(p.v)}", { vm.select(i) }, selected = ui.selected == i) }
+            plans.take(3).forEachIndexed { i, p -> SmallButton("${i + 1}안 ${ui.picks.getOrNull(i)?.tag ?: ""}", { vm.select(i) }, selected = ui.selected == i) }
         }
         val sel = ui.selected.coerceIn(0, plans.size - 1)
         val p = plans[sel]
@@ -223,7 +223,7 @@ private fun StepRow(sim: DaySim, st: Step, first: Boolean, now: Double) {
             if (st.isCharge) {
                 val ch = sim.world.chargers[st.id]!!
                 Text("${ch.name} 충전", style = MaterialTheme.typography.titleLarge)
-                Text("${clock(st.chargeStart!!)} 시작 · ${clock(st.end)} 끝 · %.0fkg · 약 ${won(st.chargeWon!!)}".format(st.chargeKg), color = C.sub)
+                Text("${clock(st.chargeStart!!)} 시작 · ${clock(st.end)} 끝 · %.0fkg 충전".format(st.chargeKg), color = C.sub)
                 if (st.waitH > 0.01) Text("앞 차 충전 기다림 ${DaySim.fmtH(st.waitH)}", color = C.warn)
             } else if (o != null) {
                 Text(sim.label(o.id), style = MaterialTheme.typography.titleLarge)
