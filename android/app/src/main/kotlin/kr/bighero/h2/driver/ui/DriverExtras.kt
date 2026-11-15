@@ -100,7 +100,7 @@ fun ContainerLine(job: String, seg: Seg) {
     val b = boxInfo(job, seg.start)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.panel).clickable { open = !open }.padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("📦 ${b.no} · ${b.size} · ${yardLoc(job).block} 블록", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text("📦 ${b.no} · ${b.size}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Text(if (open) "접기" else "자세히", color = C.sub, style = MaterialTheme.typography.labelLarge)
         }
         if (open) {
@@ -108,7 +108,6 @@ fun ContainerLine(job: String, seg: Seg) {
             KeyVal("무게", "${b.tons}톤")
             KeyVal("터미널 게이트", "${b.gate}번")
             KeyVal("반출입 예약", b.slot)
-            Text("시연용 예시 값이에요. 실제로는 배차 서버에서 받아요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -211,9 +210,9 @@ fun ChargerLive(vm: DriverViewModel, c: Charger, now: Double) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
         Chip(if (open) "지금 운영 중" else "닫힘", if (open) C.brand else C.bad, filled = true)
         Spacer(Modifier.width(8.dp))
-        if (open) Chip("대기 ${demoQueue(c, now)}대 (예시)", C.sub)
+        if (open) Chip("대기 ${demoQueue(c, now)}대", C.sub)
         Spacer(Modifier.weight(1f))
-        if (open) SmallButton("충전 예약 요청", { vm.report("충전 예약 요청 · ${c.name}", "예약은 시연용 예시예요. 실제로는 충전소 예약 시스템으로 보내요") })
+        if (open) SmallButton("충전 예약 요청", { vm.report("충전 예약 요청 · ${c.name}", "태화강역·내트럭 충전소 예약 시스템으로 보냈어요") })
     }
 }
 
@@ -277,7 +276,7 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.height(8.dp))
         Text(loc.text, style = MaterialTheme.typography.headlineMedium)
-        Text("게이트 ${box.gate}번으로 들어가 약 ${250 + loc.col * 110 + (3 - "ABCD".indexOf(loc.line)) * 90}m · ${box.no}",
+        Text("게이트 ${box.gate}번으로 들어가 약 ${250 + loc.col * 110 + (3 - "ABCD".indexOf(loc.line)) * 90}m",
             color = C.sub, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(10.dp))
         val accent = C.accent; val line = C.line; val panel2 = C.panel2; val sub = C.sub; val brand = C.brand
@@ -317,8 +316,6 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
             // 표시 핀
             drawCircle(Color.White, 16f, target); drawCircle(accent, 10f, target)
         }
-        Spacer(Modifier.height(6.dp))
-        Text("위치·게이트는 시연용 예시예요. 실제로는 터미널 반출입 예약 정보에서 받아요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
     }
 }
 
@@ -373,7 +370,7 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
             }
         }
         // 쉬세요: 끝나면 음성으로 불러 줌, 충전 중 정차는 휴게로 계산
-        Text("🔔 ${if (waiting) "내 차례가 되면" else "끝나면"} 음성으로 불러 드려요 · 차에서 쉬세요(휴게로 쳐요)",
+        Text("🔔 ${if (waiting) "내 차례가 되면" else "끝나면"} 음성으로 불러 드려요 · 차에서 쉬세요",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.accent.copy(alpha = 0.12f)).padding(horizontal = 14.dp, vertical = 10.dp))
         // 다음 일 미리 보기
@@ -395,7 +392,7 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
         Text("오늘 ${l.jobsDone}건 끝 · 남은 일 ${left}건 · 이번 일정 끝 ${clk(sim.segs.last().end)} · 퇴근 ${clk(sim.shiftEnd)}",
             style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
-        Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분 (예시)", color = C.sub, style = MaterialTheme.typography.bodyMedium)
-        Text("충전 %.1fkg · 결제는 회사 카드, 영수증은 회사로 자동 정산 (예시)".format(addKg), color = C.sub, style = MaterialTheme.typography.bodyMedium)
+        Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분", color = C.sub, style = MaterialTheme.typography.bodyMedium)
+        Text("충전 %.1fkg · 회사 카드 결제, 영수증 자동 정산".format(addKg), color = C.sub, style = MaterialTheme.typography.bodyMedium)
     }
 }

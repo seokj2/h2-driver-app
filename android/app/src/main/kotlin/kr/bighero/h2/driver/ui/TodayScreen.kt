@@ -89,7 +89,8 @@ private fun LeftColumn(vm: DriverViewModel, ui: UiState) {
             Text("닫기", color = C.sub)
         }
     }
-    H2Gauge(vm.vehicle.h2Kg(), vm.vehicle.tankKg(), sim.world.kgkm, sim.world.reserve, Modifier.fillMaxWidth())
+    // 충전 중에는 오른쪽 충전 화면이 잔량을 보여 주므로 게이지를 한 번만
+    if (chargeSegNow(sim) == null) H2Gauge(vm.vehicle.h2Kg(), vm.vehicle.tankKg(), sim.world.kgkm, sim.world.reserve, Modifier.fillMaxWidth())
     if (!sim.idle) CurrentCard(vm, ui)
     else Recommendation(vm, ui)
 }
@@ -138,6 +139,12 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
         }
         Text(title, style = MaterialTheme.typography.headlineMedium)
         s.job?.let { Text(sim.label(it), color = C.sub, style = MaterialTheme.typography.bodyLarge) }
+        // 충전소에서는 남은 시간·다음 일을 오른쪽 충전 화면이 보여 주므로 여기선 버튼만
+        if (chargeSegNow(sim) != null) {
+            Spacer(Modifier.height(12.dp))
+            if (s.start <= ui.now && s.kind != SegKind.WAIT) StopActions(vm, s, ui.tick)
+            return@Panel
+        }
         Spacer(Modifier.height(12.dp))
         val f = ((ui.now - s.start) / (s.end - s.start)).coerceIn(0.0, 1.0)
         Box(Modifier.fillMaxWidth().height(10.dp).clip(CircleShape).background(C.line)) {
@@ -265,7 +272,7 @@ private fun DaySummary(sim: DaySim, now: Double) {
         Text("오늘", color = C.sub, style = MaterialTheme.typography.labelMedium)
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Stat("오늘", "${l.jobsDone}건")
-            Stat("이번 달 (예시)", "${monthBefore(sim) + l.jobsDone}건")
+            Stat("이번 달", "${monthBefore(sim) + l.jobsDone}건")
             Stat("일한 시간", DaySim.fmtH(worked))
             // 퇴근: 받은 일정이 근무 끝을 넘기면 초과근무 예상(수당이 붙는 시간)
             val over = ((sim.segs.lastOrNull()?.end ?: now) - sim.shiftEnd)

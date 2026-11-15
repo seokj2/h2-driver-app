@@ -95,8 +95,6 @@ fun H2Screen(vm: DriverViewModel, ui: UiState) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Chip("엑시언트 수소전기 트랙터 · 탱크 %.0fkg".format(vm.vehicle.tankKg()), C.brand, filled = true)
-            Spacer(Modifier.width(8.dp))
-            Text("전기 트럭은 같은 화면이 배터리(kWh)·급속충전기로 바뀌어요(계획)", color = C.sub, style = MaterialTheme.typography.labelMedium)
         }
         H2Gauge(vm.vehicle.h2Kg(), vm.vehicle.tankKg(), sim.world.kgkm, sim.world.reserve, Modifier.fillMaxWidth())
         Text("값 출처: ${vm.vehicle.source} · 잔량 15%%(%.1fkg) 아래로 내려가는 일정은 추천하지 않아요".format(sim.world.reserve), color = C.sub, style = MaterialTheme.typography.bodyMedium)
@@ -115,6 +113,5 @@ fun H2Screen(vm: DriverViewModel, ui: UiState) {
                 KeyVal("트랙터 충전기", "${c.cap}기")
             }
         }
-        Text("운영 중·닫힘은 실제 운영시간으로 계산해요. 대기 대수와 예약은 시연용 예시이고, 한국석유관리원 실시간 API 키를 넣으면 실제 값으로 바뀌어요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
     }
 }

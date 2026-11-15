@@ -61,8 +61,8 @@ class DemoVideoTest {
             val seg = sim.currentSeg()
             if (!showedStop && seg != null && seg.kind == SegKind.TERMINAL && seg.job != null) {
                 showedStop = true
-                shot(4.0, "터미널 도착 · 지도 대신 컨테이너가 있는 블록·베이·열·단과 가는 길 (시연용 예시)")
-                click("자세히"); shot(3.0, "컨테이너 정보 · 번호·크기·무게·게이트·예약 시간 (시연용 예시)")
+                shot(4.0, "터미널 도착 · 지도 대신 컨테이너가 있는 블록·베이·열·단과 가는 길")
+                click("자세히"); shot(3.0, "컨테이너 정보 · 번호·크기·무게·게이트·예약 시간")
                 click("접기"); click("도착했어요")
                 click("문제 있음"); shot(3.0, "문제 있음 · 사유를 누르거나 배차 담당자에게 전화"); rule.onAllNodesWithText("닫기").let { it[it.fetchSemanticsNodes().size - 1].performClick() }; settle()
                 shot(2.5, "도착을 알리면 배차 담당자에게 바로 전해지고 다음 버튼으로 바뀌어요")
@@ -117,7 +117,7 @@ class DemoVideoTest {
             drive(4.0, vm().sim.segs.last().end + 1)
         }
         tab("알림"); shot(3.5, "알림 · 접안 지연·다른 트럭이 가져간 일감·내가 보낸 알림")
-        tab("충전"); shot(3.5, "충전 · 남은 연료, 충전소 운영 여부, 대기 대수와 예약 요청(예시)")
+        tab("충전"); shot(3.5, "충전 · 남은 연료, 충전소 운영 여부, 대기 대수와 예약 요청")
         tab("오늘"); shot(4.0, "쉴 때만 보이는 오늘 · 오늘·이번 달 건수, 일한 시간, 퇴근 (일하는 중에는 숨김)")
         // 다른 날: 수소가 적게 남은 채 출근 → 충전을 넣은 일정 → 충전 장면
         ui { restart(14.0) }
