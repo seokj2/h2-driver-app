@@ -321,3 +321,82 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
         Text("위치·게이트는 시연용 예시예요. 실제로는 터미널 반출입 예약 정보에서 받아요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
     }
 }
+
+// ---------- 충전 중 화면 ----------
+
+/** 충전소에서 기다리거나 충전하는 구간(대기 → 충전)이면 그 충전 구간 */
+fun chargeSegNow(sim: DaySim): Seg? {
+    val s = sim.currentSeg() ?: return null
+    if (s.kind == SegKind.CHARGE) return s
+    if (s.kind == SegKind.WAIT && sim.bundle.chargers.any { it.id == s.from })
+        return sim.segs.firstOrNull { it.kind == SegKind.CHARGE && it.start >= s.end - 0.01 && it.from == s.from }
+    return null
+}
+
+/** 충전소에 있는 동안 지도 대신: 대기 순번 또는 충전 진행, 끝나면 불러 드림, 다음 일, 오늘 번 돈 */
+@Composable
+fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Modifier) {
+    val sim = vm.sim
+    val c = sim.bundle.chargers.firstOrNull { it.id == s.from }
+    val tank = vm.vehicle.tankKg()
+    val kg = vm.vehicle.h2Kg()
+    val waiting = now < s.start
+    val f = ((now - s.start) / (s.end - s.start)).coerceIn(0.0, 1.0)
+    val addKg = (s.h2End - s.h2Start).coerceAtLeast(0.0)
+    val price = c?.price_krw_kg ?: 0.0
+    val clk: (Double) -> String = { kr.bighero.h2.core.clock(it) }
+    Column(modifier.clip(RoundedCornerShape(18.dp)).background(C.panel).border(1.dp, C.line, RoundedCornerShape(18.dp)).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Chip(if (waiting) "충전 대기" else if (f >= 1.0) "충전 끝" else "충전 중", if (waiting) C.warn else C.brand, filled = true)
+            Spacer(Modifier.width(8.dp))
+            Text(sim.world.name(s.from), color = C.sub, style = MaterialTheme.typography.titleMedium)
+        }
+        if (waiting) {
+            // 대기 순번(앞 차 대수는 시연용 예시, 내 차례 시각은 일정 계산 값)
+            val open = c == null || isOpen(c, now)
+            val ahead = maxOf(1, ((s.start - now) / 20).toInt() + 1)
+            Column {
+                Text(if (open) "앞에 ${ahead}대" else "${clk(s.start)} 문 열어요", style = MaterialTheme.typography.displaySmall.copy(fontSize = 52.sp))
+                Text(if (open) "내 차례 ${clk(s.start)} (약 ${(s.start - now).toInt()}분)" else "첫 번째로 충전 (약 ${(s.start - now).toInt()}분 뒤)", style = MaterialTheme.typography.titleLarge, color = C.sub)
+            }
+        } else {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("${(kg / tank * 100).toInt()}", style = MaterialTheme.typography.displaySmall.copy(fontSize = 56.sp), color = C.brand)
+                Text("%", style = MaterialTheme.typography.titleLarge, color = C.sub, modifier = Modifier.padding(start = 2.dp, bottom = 8.dp, end = 18.dp))
+                Column(Modifier.padding(bottom = 6.dp)) {
+                    Text("%.1fkg → %.0fkg".format(kg, s.h2End), style = MaterialTheme.typography.titleLarge)
+                    Text("남은 시간 ${((s.end - now).coerceAtLeast(0.0)).toInt()}분 · ${clk(s.end)} 끝", color = C.sub, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(18.dp).clip(CircleShape).background(C.line)) {
+                Box(Modifier.fillMaxWidth((kg / tank).toFloat().coerceIn(0f, 1f)).height(18.dp).clip(CircleShape).background(C.brand))
+            }
+        }
+        // 쉬세요: 끝나면 음성으로 불러 줌, 충전 중 정차는 휴게로 계산
+        Text("🔔 ${if (waiting) "내 차례가 되면" else "끝나면"} 음성으로 불러 드려요 · 차에서 쉬세요(휴게로 쳐요)",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.accent.copy(alpha = 0.12f)).padding(horizontal = 14.dp, vertical = 10.dp))
+        // 다음 일 미리 보기
+        val nextJob = sim.segs.firstOrNull { it.start >= s.end - 0.01 && it.job != null }
+        val nextDrive = sim.segs.firstOrNull { it.start >= s.end - 0.01 && it.kind.name.startsWith("DRIVE") }
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.panel2).padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text("다음 일", color = C.sub, style = MaterialTheme.typography.labelMedium)
+            if (nextJob != null && nextDrive != null) {
+                Text("${clk(s.end)} 출발 → ${sim.world.name(nextDrive.to)} ${clk(nextDrive.end)} 도착", style = MaterialTheme.typography.titleMedium)
+                val o = sim.world.orders[nextJob.job]
+                val term = sim.segs.firstOrNull { it.job == nextJob.job && it.kind == SegKind.TERMINAL }
+                val slack = if (o?.type == "export" && o.cutoff != null && term != null) (o.cutoff!! - term.start) / 60.0 else null
+                Text(sim.label(nextJob.job!!) + (slack?.takeIf { it >= 0 }?.let { " · 반입 마감까지 여유 ${DaySim.fmtH(it)}" } ?: ""), color = C.sub, style = MaterialTheme.typography.bodyLarge)
+            } else Text("충전 끝나면 새 일정을 추천해 드려요", style = MaterialTheme.typography.titleMedium)
+        }
+        // 오늘 번 돈·남은 일
+        val l = sim.ledgerAt(now)
+        val left = sim.segs.filter { it.start >= now && it.job != null }.mapNotNull { it.job }.toSet().size
+        Text("오늘 ${l.jobsDone}건 · 운임 ${kr.bighero.h2.core.won(l.fareSaved)} · 남은 일 ${left}건 · 이번 일정 끝 ${clk(sim.segs.last().end)}",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.weight(1f))
+        Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분 (예시)", color = C.sub, style = MaterialTheme.typography.bodyMedium)
+        Text("충전 %.1fkg · %s · 영수증은 회사로 자동 정산 (예시)".format(addKg, kr.bighero.h2.core.won(addKg * price)), color = C.sub, style = MaterialTheme.typography.bodyMedium)
+    }
+}

@@ -45,6 +45,7 @@ class DemoVideoTest {
 
     private fun click(t: String) { rule.onAllNodesWithText(t)[0].performClick(); settle(); rule.mainClock.advanceTimeBy(200); settle() }
     private var showedStop = false
+    private var chargeShots = 0
 
     /** 일이 끝날 때까지 몇 분씩 앞당기며 찍기 */
     private fun drive(stepMin: Double, until: Double) {
@@ -67,6 +68,15 @@ class DemoVideoTest {
                 shot(2.5, "도착을 알리면 배차 담당자에게 바로 전해지고 다음 버튼으로 바뀌어요")
                 click("상·하차 끝났어요"); shot(3.5, "상·하차 끝 · 컨테이너 사진과 전자 인수증 서명"); click("보내기")
             }
+            if (chargeShots == 0 && seg != null && seg.kind == SegKind.WAIT && sim.bundle.chargers.any { it.id == seg.from }) {
+                chargeShots = -1; shot(3.5, "충전소 도착 · 지도 대신 충전 화면: 내 차례(문 여는 시각), 다음 일, 오늘 번 돈")
+            }
+            if (seg != null && seg.kind == SegKind.CHARGE) {
+                val f = (sim.now - seg.start) / (seg.end - seg.start)
+                if (chargeShots <= 0) { chargeShots = 1; shot(3.5, "충전 시작 · 끝나면 음성으로 불러 주니 차에서 쉬어요") }
+                else if (chargeShots == 1 && f > 0.4) { chargeShots = 2; shot(3.0, "충전 중 · 찬 양과 남은 시간, 끝나고 갈 다음 일") }
+            }
+            if (chargeShots == 2 && seg?.kind != SegKind.CHARGE) { chargeShots = 3; shot(2.5, "충전 끝 · 바로 다음 일로 출발") }
             val cap = if (seg == null) "다음 일 기다리는 중" else "${clock(sim.now)} · ${seg.kind.label} · ${sim.label(seg.to)}"
             shot(0.16, cap)
             if (sim.idle) break
@@ -109,6 +119,15 @@ class DemoVideoTest {
         tab("알림"); shot(3.5, "알림 · 접안 지연·다른 트럭이 가져간 일감·내가 보낸 알림")
         tab("충전"); shot(3.5, "충전 · 남은 연료, 충전소 운영 여부, 대기 대수와 예약 요청(예시)")
         tab("오늘"); shot(4.0, "하루 끝 · 오늘 한 일과 아낀 용차비")
+        // 다른 날: 수소가 적게 남은 채 출근 → 충전을 넣은 일정 → 충전 장면
+        ui { restart(14.0) }
+        settle()
+        ui { skipToNext() }
+        shot(4.0, "다른 날 · 수소가 20% 남은 채 출근하면 충전을 넣은 일정을 추천해요")
+        ui { accept(); if (ui.value.running) toggleRun() }
+        shot(2.0, "이 일정 받기 · 먼저 충전소로")
+        val chEnd = vm().sim.segs.firstOrNull { it.kind == SegKind.CHARGE }?.end
+        if (chEnd != null) drive(4.0, chEnd + 6)
         File(dir, "list.txt").writeText(list.toString())
     }
 }

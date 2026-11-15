@@ -271,9 +271,10 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
         stepTo(target)
     }
 
-    fun restart() {
+    /** 처음부터. h2Kg를 주면 출근 때 수소 잔량을 바꾼 시연(예: 충전이 필요한 날) */
+    fun restart(h2Kg: Double? = null) {
         ticker?.cancel()
-        sim = DaySim(sim.bundle)
+        sim = DaySim(if (h2Kg == null) sim.bundle else sim.bundle.copy(driver = sim.bundle.driver.copy(h2_kg = h2Kg)))
         prefs.edit().clear().putString("day", sim.bundle.meta.day).apply()
         excluded.clear(); done.clear(); lastSyncAt = sim.now; spokenAlerts = 0
         seenAlerts = 0

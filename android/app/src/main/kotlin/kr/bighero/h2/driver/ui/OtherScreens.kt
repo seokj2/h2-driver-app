@@ -94,7 +94,7 @@ fun H2Screen(vm: DriverViewModel, ui: UiState) {
     @Suppress("UNUSED_VARIABLE") val tick = ui.tick
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Chip("수소전기 트랙터 · 탱크 %.0fkg".format(vm.vehicle.tankKg()), C.brand, filled = true)
+            Chip("엑시언트 수소전기 트랙터 · 탱크 %.0fkg".format(vm.vehicle.tankKg()), C.brand, filled = true)
             Spacer(Modifier.width(8.dp))
             Text("전기 트럭은 같은 화면이 배터리(kWh)·급속충전기로 바뀌어요(계획)", color = C.sub, style = MaterialTheme.typography.labelMedium)
         }

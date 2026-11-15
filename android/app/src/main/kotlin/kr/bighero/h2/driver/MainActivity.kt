@@ -76,7 +76,7 @@ fun App(vm: DriverViewModel) {
     CompositionLocalProvider(LocalContentColor provides C.text) { Box(Modifier.fillMaxSize().background(C.bg).safeDrawingPadding()) {
         when {
             ui.loading -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(); Spacer(Modifier.width(12.dp)); Text("상용차 기사용 배차·충전 도우미 · 오늘 배차 자료를 읽는 중", color = C.sub)
+                CircularProgressIndicator(); Spacer(Modifier.width(12.dp)); Text("엑시언트 기사용 배차·충전 도우미 · 오늘 배차 자료를 읽는 중", color = C.sub)
             }
             ui.error != null -> Text(ui.error!!, color = C.bad, modifier = Modifier.padding(24.dp))
             else -> BoxWithConstraints(Modifier.fillMaxSize()) {

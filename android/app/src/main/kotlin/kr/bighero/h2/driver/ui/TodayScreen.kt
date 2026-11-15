@@ -56,13 +56,17 @@ fun TodayScreen(vm: DriverViewModel, ui: UiState, wide: Boolean) {
             DaySummary(sim, ui.now)
             // 터미널 안에서는 지도 대신 컨테이너 위치(장치장 배치도)
             val yard = sim.currentSeg()?.takeIf { it.kind == SegKind.TERMINAL && it.job != null }
+            val chg = chargeSegNow(sim)
             if (yard != null) YardPane(vm, yard, Modifier.weight(1f).fillMaxWidth())
+            else if (chg != null) ChargePane(vm, chg, ui.now, Modifier.weight(1f).fillMaxWidth())
             else NaviMap(sim, ui, Modifier.weight(1f).fillMaxWidth())
         }
     } else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LeftColumn(vm, ui)
         val yard = sim.currentSeg()?.takeIf { it.kind == SegKind.TERMINAL && it.job != null }
+        val chg = chargeSegNow(sim)
         if (yard != null) YardPane(vm, yard, Modifier.fillMaxWidth().height(420.dp))
+        else if (chg != null) ChargePane(vm, chg, ui.now, Modifier.fillMaxWidth().height(460.dp))
         else NaviMap(sim, ui, Modifier.fillMaxWidth().height(360.dp))
         DaySummary(sim, ui.now)
         Spacer(Modifier.height(8.dp))

@@ -15,8 +15,8 @@ def card(name, lines, sec):
     for i, (t, f, c) in enumerate(lines):
         d.text((160, y), t, font=f, fill=c); y += (100 if f is f_big else 60)
     p = os.path.join(tmp, name); im.save(p); seq.append((p, sec))
-card("a_intro.png", [("H2 회랑 기사", f_big, (5, 5, 5)), ("상용차 기사를 위한 차량 내 배차·충전 도우미 · 플레오스 Connect", f_mid, (60, 60, 60)),
-                     ("시연: 울산–부산신항 컨테이너 운송, 수소전기 트랙터 \"수소 5호\"의 하루(2026-07-16)", f_mid, (107, 107, 107))], 4.0)
+card("a_intro.png", [("H2 회랑 기사", f_big, (5, 5, 5)), ("현대 엑시언트 기사를 위한 차량 내 배차·충전 도우미 · 플레오스 Connect", f_mid, (60, 60, 60)),
+                     ("시연: 울산–부산신항 컨테이너 운송, 엑시언트 수소전기 트랙터 \"수소 5호\"의 하루(2026-07-16)", f_mid, (107, 107, 107))], 4.0)
 for fn, sec, cap in rows:
     im = Image.open(os.path.join(src, fn)).convert("RGB")
     if im.size != (W, H): im = im.resize((W, H), Image.LANCZOS)
