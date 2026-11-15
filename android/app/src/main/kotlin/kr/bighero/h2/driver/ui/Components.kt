@@ -87,13 +87,12 @@ fun TopBar(vm: DriverViewModel, ui: UiState, wide: Boolean) {
         }
         Spacer(Modifier.width(12.dp))
         if (!wide) Spacer(Modifier.weight(1f)) else Column(Modifier.weight(1f)) {
-            Text("H2 회랑 기사 · ${sim.driver.name}", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("수소 1호차", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("엑시언트 기사용 배차·충전 도우미 · 근무 ${clock(sim.shiftStart)}~${clock(sim.shiftEnd)}", color = C.sub, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
             FreshnessDot(vm, ui.now)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                MicButton(vm, ui.listening)
             }
         }
         // 시연 시계 조작(▶/일시정지, 배속, 다음 일까지)은 평소 숨김. 시계를 길게 누르면 열고 닫음(실제 차량에서는 없앰)

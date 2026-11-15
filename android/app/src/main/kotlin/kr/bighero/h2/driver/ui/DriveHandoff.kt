@@ -47,10 +47,12 @@ fun DrivingScreen(vm: DriverViewModel, ui: UiState, d: Seg) {
     val sim = vm.sim
     Box(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(18.dp))) {
         NaviMap(sim, ui, Modifier.fillMaxSize())
-        Text("${vm.navi.label} 길안내 중", color = Color.White, style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(8.dp))
-                .background(Color(0xCC111111)).padding(horizontal = 12.dp, vertical = 6.dp))
-        DrivePopup(vm, ui, d, Modifier.align(Alignment.BottomStart).padding(16.dp).widthIn(max = 520.dp).fillMaxWidth())
+        Column(Modifier.align(Alignment.BottomStart).padding(16.dp).widthIn(max = 520.dp).fillMaxWidth()) {
+            H2Gauge(vm.vehicle.h2Kg(), vm.vehicle.tankKg(), sim.world.kgkm, sim.world.reserve,
+                Modifier.fillMaxWidth().shadow(10.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)))
+            Spacer(Modifier.height(10.dp))
+            DrivePopup(vm, ui, d, Modifier.fillMaxWidth())
+        }
     }
 }
 
@@ -62,14 +64,6 @@ private fun DrivePopup(vm: DriverViewModel, ui: UiState, d: Seg, modifier: Modif
     val km = vm.roads?.get(d.from, d.to)?.let { (1 - f) * it.length / 1000 }
     val after = sim.upcoming().firstOrNull { it.start >= d.end - 0.01 }
     Column(modifier.shadow(10.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(C.panel).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(C.brand), contentAlignment = Alignment.Center) {
-                Text("H2", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text("H2 회랑 기사", color = C.sub, style = MaterialTheme.typography.labelLarge)
-        }
-        Spacer(Modifier.height(8.dp))
         ui.banner?.let { a ->
             val col = when (a.kind) { AlertKind.BERTH_LATE, AlertKind.EXPORT_RISK, AlertKind.MISSED -> C.warn; else -> C.brand }
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(col.copy(alpha = 0.16f)).clickable { vm.dismissBanner() }.padding(12.dp)) {

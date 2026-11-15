@@ -48,6 +48,8 @@ import kr.bighero.h2.driver.UiState
 @Composable
 fun TodayScreen(vm: DriverViewModel, ui: UiState, wide: Boolean) {
     val sim = vm.sim
+    // 운전 중: 지도를 화면 가득, 수소 잔량·남은 거리 카드는 지도 위에 떠 있게
+    drivingSeg(sim, ui.now)?.let { DrivingScreen(vm, ui, it); return }
     // 운전 중에는 순정 내비가 길안내, 우리 앱은 팝업만(도착하면 다시 이 화면으로)
     if (wide) Row(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
