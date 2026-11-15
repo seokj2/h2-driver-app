@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -172,10 +173,17 @@ private fun DrawScope.topTruck(front: Offset, len: Float, wid: Float, cab: Color
 
 private var K = 1f   // 그림 크기에 맞춘 글자 배율
 
+/** 높이 600짜리 가상 화면에 그리고 통째로 늘이거나 줄임: 작은 칸·확대 화면 모두 그림과 글자 비율이 같게 */
+private const val VH = 600f
+
 private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color) {
-    val w = size.width; val h = size.height
+    val s = size.height / VH
+    scale(s, pivot = Offset.Zero) { drawYardV(tm, loc, gateNo, accent, brand, sub, text, size.width / s, VH) }
+}
+
+private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color, w: Float, h: Float) {
     RIGHT = Float.MAX_VALUE
-    K = (h * 0.03f / 11.sp.toPx()).coerceIn(0.9f, 3f)   // 그림 높이에 맞춰 글자 크기를 정함(화면 밀도와 무관)
+    K = 18f / 11.sp.toPx()   // 11sp 글자 = 가상 화면 18(높이의 3%)
     val planW = w * 0.73f                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
     // ---- 바다·배·안벽 ----
     val seaH = h * 0.10f
@@ -233,7 +241,12 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
         drawLine(Color(0xFF9AA1A9), Offset(o.x + 2f, o.y + bh - 2f), Offset(o.x + bw - 2f, o.y + bh - 2f), strokeWidth = 2f)
         val gx = o.x + 4f + ((c * 5 + r * 3) % bays + 0.5f) * cw
         drawRect(if (hit) CRANE else CRANE.copy(alpha = 0.35f), Offset(gx - 3f, o.y + 12f), Size(6f, bh - 10f))
-        label(tm, "${c + 1}${"ABCD"[r]}", Offset(o.x + 4f, o.y + 1f), if (hit) accent else sub, 11.sp, bold = hit)
+        run {   // 블록 이름: 흰 바탕 위에(컨테이너 무늬와 안 겹치게)
+            val nm = "${c + 1}${"ABCD"[r]}"
+            val m = tm.measure(nm, TextStyle(fontSize = 10.sp * K, fontWeight = FontWeight.Bold))
+            drawRoundRect(Color.White, Offset(o.x + 2f, o.y + 2f), Size(m.size.width + 8f, m.size.height.toFloat()), CornerRadius(4f))
+            label(tm, nm, Offset(o.x + 6f, o.y + 2f), if (hit) accent else text, 10.sp, bold = true)
+        }
         if (hit) {
             drawRect(accent, o, Size(bw, bh), style = Stroke(5f))
             target = Offset(o.x + 4f + (tBay + 0.5f) * cw, o.y + 18f + (tRow + 0.5f) * chh)
@@ -244,17 +257,17 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     }
     // ---- 게이트(아래): 6개 차로, 내 게이트 강조 ----
     drawRect(Color(0xFFCFD4DA), Offset(0f, yardB + h * 0.04f), Size(planW, h - yardB - h * 0.04f))
-    val gw = planW * 0.06f; val g0 = planW * 0.08f
+    val gw = bw * 0.5f
+    fun gateX(g: Int) = laneW + (g - 1) * (bw + laneW) + bw / 2 - gw / 2   // 게이트 n = 블록 n열 바로 아래
     for (g in 1..6) {
-        val x = g0 + (g - 1) * gw * 1.25f
+        val x = gateX(g)
         val mine = g == gateNo
         drawRoundRect(if (mine) brand else Color(0xFF7D858F), Offset(x, gateY - h * 0.03f), Size(gw, h * 0.06f), CornerRadius(6f))
         label(tm, "$g", Offset(x + gw / 2, gateY), Color.White, 12.sp, bold = true, center = true)
     }
-    val gl = tm.measure("게이트", TextStyle(fontSize = 11.sp * K))
-    label(tm, "게이트", Offset(g0 + 6 * gw * 1.25f + 8f + gl.size.width / 2f, gateY), sub, 11.sp, center = true)   // 숫자 칸과 같은 높이 가운데
+    label(tm, "게이트", Offset(6f, yardB + h * 0.042f), sub, 9.sp)
     // ---- 가는 길: 내 게이트 → 게이트 앞 도로 → 블록 왼쪽 도로 → 블록 옆 트럭 줄(베이 앞) ----
-    val myGateX = g0 + (gateNo - 1) * gw * 1.25f + gw / 2
+    val myGateX = gateX(gateNo) + gw / 2
     val laneX = tBlock.x - laneW / 2
     val roadY = yardB + h * 0.02f
     val lastLine = ti == lines - 1

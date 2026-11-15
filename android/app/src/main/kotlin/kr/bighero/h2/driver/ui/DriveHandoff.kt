@@ -118,9 +118,7 @@ private fun SafetyCard(kind: String, m: Double, limit: Int, modifier: Modifier) 
                 Text("${(m / 10).toInt() * 10}m 앞", style = MaterialTheme.typography.headlineSmall, color = C.warn, fontWeight = FontWeight.Bold)
             }
         } else {
-            Box(Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFC928)), contentAlignment = Alignment.Center) {
-                Text("⌒", fontSize = 34.sp, fontWeight = FontWeight.Black, color = Color(0xFF111111))
-            }
+            BumpSign(Modifier.size(60.dp))
             Spacer(Modifier.width(12.dp))
             Column {
                 Text("과속방지턱", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -152,5 +150,25 @@ private fun DrivePopup(vm: DriverViewModel, ui: UiState, d: Seg, modifier: Modif
             color = C.sub, style = MaterialTheme.typography.titleMedium)
         val rest = drivenSinceBreak(sim, ui.now)
         if (rest >= 105) { Spacer(Modifier.height(8.dp)); RestLine(sim, ui.now) }
+    }
+}
+
+
+/** 과속방지턱 주의 표지: 빨간 테두리 흰 삼각형 안에 검은 둔덕 */
+@Composable
+private fun BumpSign(modifier: Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val w = size.width; val h = size.height
+        fun tri(inset: Float) = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w / 2, inset * 1.6f); lineTo(w - inset, h - inset * 0.8f); lineTo(inset, h - inset * 0.8f); close()
+        }
+        drawPath(tri(0f), Color(0xFFE53935))
+        drawPath(tri(w * 0.13f), Color.White)
+        // 길(밑줄)과 둔덕
+        val base = h * 0.74f
+        drawRect(Color(0xFF111111), androidx.compose.ui.geometry.Offset(w * 0.27f, base), androidx.compose.ui.geometry.Size(w * 0.46f, h * 0.045f))
+        drawPath(androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.36f, base); cubicTo(w * 0.42f, h * 0.50f, w * 0.58f, h * 0.50f, w * 0.64f, base); close()
+        }, Color(0xFF111111))
     }
 }
