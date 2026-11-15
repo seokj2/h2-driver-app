@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.sp
 import kr.bighero.h2.core.Charger
 import kr.bighero.h2.core.DaySim
 import kr.bighero.h2.core.Seg
@@ -98,7 +100,7 @@ fun ContainerLine(job: String, seg: Seg) {
     val b = boxInfo(job, seg.start)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.panel).clickable { open = !open }.padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("📦 ${b.no} · ${b.size}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text("📦 ${b.no} · ${b.size} · ${yardLoc(job).block} 블록", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Text(if (open) "접기" else "자세히", color = C.sub, style = MaterialTheme.typography.labelLarge)
         }
         if (open) {
@@ -243,4 +245,79 @@ fun MicButton(vm: DriverViewModel, listening: Boolean) {
         if (androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) vm.listen()
         else perm.launch(android.Manifest.permission.RECORD_AUDIO)
     }, selected = listening)
+}
+
+// ---------- 터미널 안 컨테이너 위치(시연용 예시) ----------
+
+/** 장치장 위치: 블록(열 번호 1~6 + 줄 A~D)·베이·열·단. 실제로는 터미널 운영시스템(TOS)의 반출입 예약 정보에서 받음 */
+data class YardLoc(val col: Int, val line: Char, val bay: Int, val row: Int, val tier: Int) {
+    val block get() = "$col$line"
+    val text get() = "$block 블록 · 베이 %02d · 열 %02d · %d단".format(bay, row, tier)
+}
+
+fun yardLoc(job: String): YardLoc {
+    val h = abs(job.hashCode() / 7)
+    return YardLoc(1 + h % 6, "ABCD"[(h / 6) % 4], 2 + (h / 24) % 40 * 2, 1 + (h / 960) % 9, 1 + (h / 8640) % 5)
+}
+
+/** 터미널에 있는 동안 지도 대신 보여 주는 장치장 배치도: 게이트에서 컨테이너가 있는 블록까지 */
+@Composable
+fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
+    val sim = vm.sim
+    val job = s.job ?: return
+    val loc = yardLoc(job)
+    val box = boxInfo(job, s.start)
+    val export = sim.world.orders[job]?.type == "export"
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    Column(modifier.clip(RoundedCornerShape(18.dp)).background(C.panel).border(1.dp, C.line, RoundedCornerShape(18.dp)).padding(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Chip(if (export) "내려놓을 곳" else "실을 컨테이너 위치", C.accent, filled = true)
+            Spacer(Modifier.width(8.dp))
+            Text(sim.world.name(s.from), color = C.sub, style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(loc.text, style = MaterialTheme.typography.headlineMedium)
+        Text("게이트 ${box.gate}번으로 들어가 약 ${250 + loc.col * 110 + (3 - "ABCD".indexOf(loc.line)) * 90}m · ${box.no}",
+            color = C.sub, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(10.dp))
+        val accent = C.accent; val line = C.line; val panel2 = C.panel2; val sub = C.sub; val brand = C.brand
+        Canvas(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(C.bg)) {
+            val w = size.width; val h = size.height
+            val padX = w * 0.06f; val quayH = h * 0.12f; val roadH = h * 0.10f
+            // 안벽(위)과 크레인
+            drawRect(Color(0xFF9DB7CF), Offset(0f, 0f), androidx.compose.ui.geometry.Size(w, quayH * 0.55f))
+            for (i in 0 until 6) {
+                val x = padX + (w - 2 * padX) * (i + 0.5f) / 6
+                drawLine(Color(0xFF6B7C8F), Offset(x, quayH * 0.2f), Offset(x, quayH), strokeWidth = 4f)
+                drawLine(Color(0xFF6B7C8F), Offset(x - 18f, quayH * 0.35f), Offset(x + 18f, quayH * 0.35f), strokeWidth = 4f)
+            }
+            drawText(tm, "안벽 · 배", Offset(padX, 4f), style = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 12.sp))
+            // 블록 6 × 4
+            val top = quayH + 12f; val bottom = h - roadH - 12f
+            val cw = (w - 2 * padX) / 6; val ch = (bottom - top) / 4
+            var target = Offset.Zero
+            for (c in 1..6) for ((r, ln) in "ABCD".withIndex()) {
+                val o = Offset(padX + (c - 1) * cw + 6f, top + r * ch + 6f)
+                val sz = androidx.compose.ui.geometry.Size(cw - 12f, ch - 12f)
+                val hit = c == loc.col && ln == loc.line
+                drawRoundRect(if (hit) accent else panel2, o, sz, androidx.compose.ui.geometry.CornerRadius(8f))
+                if (hit) target = Offset(o.x + sz.width / 2, o.y + sz.height / 2)
+                drawText(tm, "$c$ln", Offset(o.x + 8f, o.y + 6f),
+                    style = androidx.compose.ui.text.TextStyle(color = if (hit) Color.White else sub, fontSize = 13.sp))
+            }
+            // 게이트(아래 왼쪽)와 길
+            val gate = Offset(padX + 10f, h - roadH / 2)
+            drawLine(line, Offset(0f, h - roadH / 2), Offset(w, h - roadH / 2), strokeWidth = roadH * 0.5f)
+            drawRoundRect(brand, Offset(gate.x - 8f, gate.y - roadH * 0.4f), androidx.compose.ui.geometry.Size(70f, roadH * 0.8f), androidx.compose.ui.geometry.CornerRadius(6f))
+            drawText(tm, "게이트 ${box.gate}", Offset(gate.x - 2f, gate.y - 10f), style = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 11.sp))
+            val laneX = target.x
+            val pe = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(18f, 12f))
+            drawLine(accent, Offset(gate.x + 70f, gate.y), Offset(laneX, gate.y), strokeWidth = 7f, pathEffect = pe)
+            drawLine(accent, Offset(laneX, gate.y), Offset(laneX, target.y + 14f), strokeWidth = 7f, pathEffect = pe)
+            // 표시 핀
+            drawCircle(Color.White, 16f, target); drawCircle(accent, 10f, target)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("위치·게이트는 시연용 예시예요. 실제로는 터미널 반출입 예약 정보에서 받아요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
+    }
 }

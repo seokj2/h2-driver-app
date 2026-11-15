@@ -60,7 +60,7 @@ class DemoVideoTest {
             val seg = sim.currentSeg()
             if (!showedStop && seg != null && seg.kind == SegKind.TERMINAL && seg.job != null) {
                 showedStop = true
-                shot(3.0, "터미널 도착 · 할 일과 큰 버튼 두 개만")
+                shot(4.0, "터미널 도착 · 지도 대신 컨테이너가 있는 블록·베이·열·단과 가는 길 (시연용 예시)")
                 click("자세히"); shot(3.0, "컨테이너 정보 · 번호·크기·무게·게이트·예약 시간 (시연용 예시)")
                 click("접기"); click("도착했어요")
                 click("문제 있음"); shot(3.0, "문제 있음 · 사유를 누르거나 배차 담당자에게 전화"); rule.onAllNodesWithText("닫기").let { it[it.fetchSemanticsNodes().size - 1].performClick() }; settle()
