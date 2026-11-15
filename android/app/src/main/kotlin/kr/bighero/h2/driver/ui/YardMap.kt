@@ -79,18 +79,18 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
         // 그림을 누르면 화면 가득 크게(다시 누르면 닫힘)
         var zoom by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
         Canvas(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(YARD).clickable { zoom = true }) {
-            drawYard(tm, loc, box.gate, accent, brand, sub, text)
+            drawYard(tm, loc, box.gate, accent, brand, sub, text, zoomed = false)
         }
         if (zoom) androidx.compose.ui.window.Dialog(onDismissRequest = { zoom = false },
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
             Column(Modifier.fillMaxWidth(0.96f).fillMaxHeight(0.94f).clip(RoundedCornerShape(18.dp)).background(C.panel).padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(loc.text, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                    Text(loc.text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("닫기", style = MaterialTheme.typography.titleLarge, color = C.sub, modifier = Modifier.clickable { zoom = false }.padding(8.dp))
                 }
                 Spacer(Modifier.height(8.dp))
                 Canvas(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(YARD).clickable { zoom = false }) {
-                    drawYard(tm, loc, box.gate, accent, brand, sub, text)
+                    drawYard(tm, loc, box.gate, accent, brand, sub, text, zoomed = true)
                 }
             }
         }
@@ -176,15 +176,15 @@ private var K = 1f   // 그림 크기에 맞춘 글자 배율
 /** 높이 600짜리 가상 화면에 그리고 통째로 늘이거나 줄임: 작은 칸·확대 화면 모두 그림과 글자 비율이 같게 */
 private const val VH = 600f
 
-private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color) {
+private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color, zoomed: Boolean) {
     val s = size.height / VH
-    scale(s, pivot = Offset.Zero) { drawYardV(tm, loc, gateNo, accent, brand, sub, text, size.width / s, VH) }
+    scale(s, pivot = Offset.Zero) { drawYardV(tm, loc, gateNo, accent, brand, sub, text, size.width / s, VH, zoomed) }
 }
 
-private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color, w: Float, h: Float) {
+private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color, w: Float, h: Float, zoomed: Boolean) {
     RIGHT = Float.MAX_VALUE
     K = 18f / 11.sp.toPx()   // 11sp 글자 = 가상 화면 18(높이의 3%)
-    val planW = w * 0.73f                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
+    val planW = w * (if (w / h < 1.35f) 0.66f else 0.73f)                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
     // ---- 바다·배·안벽 ----
     val seaH = h * 0.10f
     drawRect(SEA, Offset.Zero, Size(planW, seaH))
@@ -200,7 +200,6 @@ private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acc
     drawRect(Color.White, Offset(shipR - 46f, shipT + 4f), Size(26f, shipB - shipT - 8f))   // 선교
     val apronT = seaH; val apronB = h * 0.17f
     drawRect(APRON, Offset(0f, apronT), Size(planW, apronB - apronT))
-    label(tm, "안벽", Offset(8f, apronT + 4f), sub, 10.sp)
     // 안벽 크레인 4대(다리는 안벽, 붐은 배 위로)
     for (i in 0 until 4) {
         val x = planW * (0.22f + i * 0.17f)
@@ -281,10 +280,16 @@ private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acc
     // 도착 지점: 베이 앞 정차 표시 + 칸까지 점선
     drawLine(accent, Offset(target.x, stopY), Offset(target.x, target.y), strokeWidth = 3f, pathEffect = dash)
     val fromX = if (lastLine) myGateX else laneX
-    topTruck(Offset(target.x + (bw - 8f) / bays * 1.4f, stopY), (bw - 8f) / bays * 3f, laneW * 0.62f, brand, facingRight = target.x >= fromX)
+    topTruck(Offset(target.x + (bw - 8f) / bays * 1.4f, stopY), (bw - 8f) / bays * 3f, laneW * 0.5f, brand, facingRight = target.x >= fromX)
     // 내 칸 표시 핀
-    drawCircle(accent.copy(alpha = 0.25f), 26f, target)
-    drawCircle(Color.White, 15f, target); drawCircle(accent, 10f, target)
+    if (zoomed) { drawCircle(accent.copy(alpha = 0.25f), 16f, target); drawCircle(Color.White, 10f, target); drawCircle(accent, 6.5f, target) }
+    else { drawCircle(Color.White, 6f, target); drawCircle(accent, 4f, target) }   // 작은 화면: 블록 이름 안 가리게 작게
+    run {   // 핀이 블록 이름을 가리지 않게 이름을 한 번 더 위에
+        val nm = "${loc.col}${loc.line}"
+        val m = tm.measure(nm, TextStyle(fontSize = 10.sp * K, fontWeight = FontWeight.Bold))
+        drawRoundRect(Color.White, Offset(tBlock.x + 2f, tBlock.y + 2f), Size(m.size.width + 8f, m.size.height.toFloat()), CornerRadius(4f))
+        label(tm, nm, Offset(tBlock.x + 6f, tBlock.y + 2f), accent, 10.sp, bold = true)
+    }
     // ---- 오른쪽: 그 줄을 옆에서 본 모습(단 = 아래부터 몇 번째, 열 = 옆으로 몇 번째) ----
     val sx = planW + w * 0.025f; val sw = w - sx - w * 0.015f
     RIGHT = w - 4f
@@ -296,10 +301,11 @@ private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acc
     val legW = 10f; val beamH = 16f * K
     val cellW = (fw - 2 * legW - 8f) / stackCols; val cellH = (gB - gT - beamH - 34f) / tiers
     val myCol = (loc.row - 1).mod(stackCols)
-    // 야드 크레인(문형): 다리 둘 + 위 빔 + 집게
-    drawRect(CRANE, Offset(fx, gT), Size(legW, gB - gT)); drawRect(CRANE, Offset(fx + fw - legW, gT), Size(legW, gB - gT))
-    drawRect(CRANE, Offset(fx, gT), Size(fw, beamH))
-    label(tm, "야드 크레인", Offset(fx + fw / 2, gT + beamH / 2), Color(0xFF3A3000), 9.sp, bold = true, center = true)
+    if (zoomed) {   // 확대 화면에만 야드 크레인(문형)과 집게
+        drawRect(CRANE, Offset(fx, gT), Size(legW, gB - gT)); drawRect(CRANE, Offset(fx + fw - legW, gT), Size(legW, gB - gT))
+        drawRect(CRANE, Offset(fx, gT), Size(fw, beamH))
+        label(tm, "야드 크레인", Offset(fx + fw / 2, gT + beamH / 2), Color(0xFF3A3000), 9.sp, bold = true, center = true)
+    }
     val colX = { c: Int -> fx + legW + 4f + c * cellW }
     val myTop = gB - loc.tier.coerceAtMost(tiers) * cellH
     // 컨테이너 쌓임: 내 열만 진하게
@@ -314,10 +320,11 @@ private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acc
             }
         }
     }
-    // 집게가 내 컨테이너 위에 내려와 있음
-    val hx = colX(myCol) + cellW / 2
-    drawLine(Color(0xFF555B63), Offset(hx, gT + beamH), Offset(hx, myTop - 6f), strokeWidth = 3f)
-    drawRect(Color(0xFF555B63), Offset(colX(myCol) + 4f, myTop - 6f), Size(cellW - 8f, 6f))   // 집게(스프레더)
+    if (zoomed) {
+        val hx = colX(myCol) + cellW / 2
+        drawLine(Color(0xFF555B63), Offset(hx, gT + beamH), Offset(hx, myTop - 6f), strokeWidth = 3f)
+        drawRect(Color(0xFF555B63), Offset(colX(myCol) + 4f, myTop - 6f), Size(cellW - 8f, 6f))
+    }
     // 왼쪽 단 번호, 아래 열 번호
     for (t in 1..tiers) label(tm, "${t}단", Offset(sx + tl / 2, gB - (t - 0.5f) * cellH), if (t == loc.tier) accent else sub, 10.sp, bold = t == loc.tier, center = true)
     drawLine(sub, Offset(fx - 4f, gB), Offset(fx + fw + 4f, gB), strokeWidth = 3f)
@@ -331,5 +338,5 @@ private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acc
     val lh = 18f * K
     drawRect(accent, Offset(sx, ly + 3f), Size(18f, 12f)); label(tm, "내 컨테이너", Offset(sx + 26f, ly - 4f), text, 11.sp)
     drawLine(accent, Offset(sx, ly + lh + 9f), Offset(sx + 18f, ly + lh + 9f), strokeWidth = 5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f)))
-    label(tm, "가는 길", Offset(sx + 26f, ly + lh - 4f), text, 11.sp)
+    label(tm, "경로", Offset(sx + 26f, ly + lh - 4f), text, 11.sp)
 }
