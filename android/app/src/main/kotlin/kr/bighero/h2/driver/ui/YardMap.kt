@@ -96,9 +96,13 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
     }
 }
 
+private var RIGHT = Float.MAX_VALUE   // 글자가 넘지 말아야 할 오른쪽 끝(넘으면 글자를 줄임)
+
 private fun DrawScope.label(tm: TextMeasurer, s: String, at: Offset, color: Color, size: TextUnit = 11.sp, bold: Boolean = false, center: Boolean = false) {
-    val st = TextStyle(color = color, fontSize = size * K, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
-    val r = tm.measure(s, st)
+    var st = TextStyle(color = color, fontSize = size * K, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+    var r = tm.measure(s, st)
+    val room = if (center) 2 * minOf(RIGHT - at.x, Float.MAX_VALUE / 4) else RIGHT - at.x
+    if (r.size.width > room && room > 0) { st = st.copy(fontSize = st.fontSize * (room / r.size.width) * 0.97f); r = tm.measure(s, st) }
     drawText(r, topLeft = if (center) Offset(at.x - r.size.width / 2f, at.y - r.size.height / 2f) else at)
 }
 
@@ -170,6 +174,7 @@ private var K = 1f   // 그림 크기에 맞춘 글자 배율
 
 private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color) {
     val w = size.width; val h = size.height
+    RIGHT = Float.MAX_VALUE
     K = (h * 0.03f / 11.sp.toPx()).coerceIn(0.9f, 3f)   // 그림 높이에 맞춰 글자 크기를 정함(화면 밀도와 무관)
     val planW = w * 0.73f                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
     // ---- 바다·배·안벽 ----
@@ -275,6 +280,7 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
 
     // ---- 오른쪽: 그 줄을 옆에서 본 모습(단 = 아래부터 몇 번째, 열 = 옆으로 몇 번째) ----
     val sx = planW + w * 0.025f; val sw = w - sx - w * 0.015f
+    RIGHT = w - 4f
     label(tm, "옆에서 보면", Offset(sx, 6f), text, 13.sp, bold = true)
     label(tm, "크레인이 ${loc.tier}단을 집어", Offset(sx, 10f + 22f * K), sub, 10.sp)
     label(tm, "내 트럭에 실어요", Offset(sx, 12f + 38f * K), sub, 10.sp)
