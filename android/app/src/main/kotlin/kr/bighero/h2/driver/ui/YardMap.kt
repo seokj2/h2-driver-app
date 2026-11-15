@@ -97,21 +97,80 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
 }
 
 private fun DrawScope.label(tm: TextMeasurer, s: String, at: Offset, color: Color, size: TextUnit = 11.sp, bold: Boolean = false, center: Boolean = false) {
-    val st = TextStyle(color = color, fontSize = size, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+    val st = TextStyle(color = color, fontSize = size * K, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
     val r = tm.measure(s, st)
     drawText(r, topLeft = if (center) Offset(at.x - r.size.width / 2f, at.y - r.size.height / 2f) else at)
 }
 
-private fun DrawScope.truck(at: Offset, s: Float, color: Color, up: Boolean = true) {
-    // 위에서 본 트랙터+트레일러(위쪽이 진행 방향)
-    val w = s * 0.55f
-    val dir = if (up) -1f else 1f
-    drawRoundRect(Color(0xFF555B63), Offset(at.x - w / 2, at.y - s * 0.1f * dir.coerceAtLeast(0f) - (if (up) 0f else s)), Size(w, s), CornerRadius(3f))
-    drawRoundRect(color, Offset(at.x - w / 2 - 1f, at.y + (if (up) -s * 0.55f - s * 0.12f else s * 0.12f)), Size(w + 2f, s * 0.55f), CornerRadius(5f))
+/** 옆에서 본 수소 트랙터 + 섀시(트레일러): 캡·창·문, 캡 뒤 수소 탱크, 바퀴 5축 */
+private fun DrawScope.sideTruck(tm: TextMeasurer, at: Offset, w: Float, h: Float, cab: Color) {
+    val tire = Color(0xFF26292D); val hub = Color(0xFFB8BEC6); val steel = Color(0xFF7D858F)
+    val wheelR = h * 0.17f; val groundY = at.y + h - wheelR * 0.1f
+    val cabW = w * 0.24f; val cabH = h * 0.78f
+    // 섀시
+    drawRect(steel, Offset(at.x + cabW * 0.6f, groundY - wheelR * 1.9f), Size(w - cabW * 0.6f, wheelR * 0.55f))
+    // 트레일러 데크와 트위스트락
+    drawRect(Color(0xFF5A6169), Offset(at.x + cabW + w * 0.10f, groundY - wheelR * 2.35f), Size(w - cabW - w * 0.10f, wheelR * 0.5f))
+    for (i in 0..3) drawRect(Color(0xFFF2B705), Offset(at.x + cabW + w * 0.12f + i * (w - cabW - w * 0.16f) / 3f, groundY - wheelR * 2.6f), Size(6f, 5f))
+    // 수소 탱크(캡 뒤)
+    for (i in 0..2) drawRoundRect(Color(0xFFDDE3E9), Offset(at.x + cabW + 4f + i * w * 0.028f, groundY - wheelR * 2.0f - h * 0.55f), Size(w * 0.024f, h * 0.55f), CornerRadius(8f))
+    drawRect(Color(0xFF3B82C4), Offset(at.x + cabW + 4f, groundY - wheelR * 2.0f - h * 0.35f), Size(w * 0.08f, 4f))
+    // 캡
+    val cy = groundY - wheelR * 1.4f - cabH
+    val cabPath = Path().apply {
+        moveTo(at.x, cy + cabH); lineTo(at.x, cy + cabH * 0.25f); quadraticTo(at.x, cy, at.x + cabW * 0.25f, cy)
+        lineTo(at.x + cabW, cy); lineTo(at.x + cabW, cy + cabH); close()
+    }
+    drawPath(cabPath, cab)
+    drawRoundRect(Color(0xFFBFE3F5), Offset(at.x + cabW * 0.08f, cy + cabH * 0.10f), Size(cabW * 0.42f, cabH * 0.30f), CornerRadius(6f))   // 앞유리
+    drawRoundRect(Color(0xFFBFE3F5), Offset(at.x + cabW * 0.56f, cy + cabH * 0.10f), Size(cabW * 0.34f, cabH * 0.30f), CornerRadius(4f))   // 옆창
+    drawLine(Color(0x55000000), Offset(at.x + cabW * 0.52f, cy + cabH * 0.08f), Offset(at.x + cabW * 0.52f, cy + cabH * 0.95f), strokeWidth = 2f) // 문
+    drawRect(Color(0xFF26292D), Offset(at.x - 2f, cy + cabH * 0.80f), Size(cabW * 0.18f, cabH * 0.16f))  // 범퍼
+    drawCircle(Color(0xFFFFE08A), cabH * 0.05f, Offset(at.x + cabW * 0.07f, cy + cabH * 0.72f))           // 전조등
+    val r = tm.measure("H2", TextStyle(color = Color.White, fontSize = 9.sp * K, fontWeight = FontWeight.Bold))
+    drawText(r, topLeft = Offset(at.x + cabW * 0.62f, cy + cabH * 0.55f))
+    // 바퀴: 캡 2축, 트레일러 3축
+    for (fx in listOf(0.10f, 0.30f, 0.66f, 0.78f, 0.90f)) {
+        val c = Offset(at.x + w * fx, groundY - wheelR)
+        drawCircle(tire, wheelR, c); drawCircle(hub, wheelR * 0.45f, c); drawCircle(tire, wheelR * 0.15f, c)
+    }
 }
+
+/** 위에서 본 수소 트랙터 + 빈 섀시. front = 캡 앞머리 위치(차로 한가운데), len·wid = 전체 길이·폭 */
+private fun DrawScope.topTruck(front: Offset, len: Float, wid: Float, cab: Color, facingRight: Boolean) {
+    val s = if (facingRight) -1f else 1f            // 앞머리에서 뒤쪽으로 가는 방향
+    fun x(d: Float) = front.x + s * d                // 앞머리에서 d만큼 뒤
+    fun rect(d0: Float, d1: Float, wFrac: Float, c: Color, r: Float = 3f) {
+        val a = minOf(x(d0), x(d1)); val b = maxOf(x(d0), x(d1)); val ww = wid * wFrac
+        drawRoundRect(c, Offset(a, front.y - ww / 2), Size(b - a, ww), CornerRadius(r))
+    }
+    val tire = Color(0xFF26292D)
+    // 그림자
+    drawRoundRect(Color(0x33000000), Offset(minOf(x(0f), x(len)) + 3f, front.y - wid / 2 + 4f), Size(len, wid), CornerRadius(5f))
+    // 바퀴(옆으로 살짝 튀어나옴): 캡 앞축·뒤축, 섀시 3축
+    for (d in listOf(0.08f, 0.28f, 0.74f, 0.82f, 0.90f)) {
+        val cx = x(len * d); val tw = len * 0.055f
+        drawRoundRect(tire, Offset(cx - tw / 2, front.y - wid * 0.58f), Size(tw, wid * 1.16f), CornerRadius(2f))
+    }
+    // 섀시 프레임(빈 차대) + 트위스트락
+    rect(len * 0.30f, len, 0.86f, Color(0xFF5A6169))
+    rect(len * 0.30f, len, 0.30f, Color(0xFF7D858F))
+    for (d in listOf(0.36f, 0.97f)) for (sy in listOf(-1f, 1f))
+        drawRect(Color(0xFFF2B705), Offset(x(len * d) - 3f, front.y + sy * wid * 0.36f - 3f), Size(6f, 6f))
+    // 캡 뒤 수소 탱크 3개
+    for (i in 0..2) rect(len * (0.20f + i * 0.035f), len * (0.23f + i * 0.035f), 0.92f, Color(0xFFDDE3E9), 4f)
+    // 캡: 지붕, 앞유리, 사이드미러
+    rect(0f, len * 0.20f, 1f, cab, 6f)
+    rect(len * 0.02f, len * 0.07f, 0.84f, Color(0xFFBFE3F5), 2f)
+    rect(len * 0.09f, len * 0.18f, 0.56f, Color.White.copy(alpha = 0.25f), 3f)   // 지붕 에어디플렉터
+    for (sy in listOf(-1f, 1f)) drawRoundRect(Color(0xFF26292D), Offset(minOf(x(len * 0.05f), x(len * 0.08f)), front.y + sy * wid * 0.62f - 2f), Size(len * 0.03f, 4f), CornerRadius(2f))
+}
+
+private var K = 1f   // 그림 크기에 맞춘 글자 배율
 
 private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color) {
     val w = size.width; val h = size.height
+    K = (h / 600f).coerceIn(1.15f, 2.4f)
     val planW = w * 0.73f                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
     // ---- 바다·배·안벽 ----
     val seaH = h * 0.10f
@@ -192,30 +251,32 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     val myGateX = g0 + (gateNo - 1) * gw * 1.25f + gw / 2
     val laneX = tBlock.x - laneW / 2
     val roadY = yardB + h * 0.02f
-    val stopY = tBlock.y + tBlockSize.height + laneW / 2
+    val lastLine = ti == lines - 1
+    val stopY = if (lastLine) roadY else tBlock.y + tBlockSize.height + laneW / 2   // 블록 바로 아래 차로 한가운데
     val route = Path().apply {
-        moveTo(myGateX, gateY - h * 0.03f); lineTo(myGateX, roadY); lineTo(laneX, roadY)
-        lineTo(laneX, stopY); lineTo(target.x, stopY)
+        moveTo(myGateX, gateY - h * 0.03f); lineTo(myGateX, roadY)
+        if (!lastLine) { lineTo(laneX, roadY); lineTo(laneX, stopY) }
+        lineTo(target.x, stopY)
     }
-    drawPath(route, Color.White, style = Stroke(13f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    drawPath(route, accent, style = Stroke(7f, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 10f))))
+    drawPath(route, accent, style = Stroke(laneW * 0.32f, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 10f))))
     // 도착 지점: 베이 앞 정차 표시 + 칸까지 점선
     drawLine(accent, Offset(target.x, stopY), Offset(target.x, target.y), strokeWidth = 3f, pathEffect = dash)
-    truck(Offset(target.x, stopY + 14f), 30f, brand)
+    val fromX = if (lastLine) myGateX else laneX
+    topTruck(Offset(target.x + laneW * 0.6f, stopY), laneW * 4.2f, laneW * 0.85f, brand, facingRight = target.x >= fromX)
     // 내 칸 표시 핀
     drawCircle(accent.copy(alpha = 0.25f), 26f, target)
     drawCircle(Color.White, 15f, target); drawCircle(accent, 10f, target)
     // 말풍선
     val tag = "${loc.block} · 베이 %02d · 열 %02d".format(loc.bay, loc.row)
-    val r = tm.measure(tag, TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold))
+    val r = tm.measure(tag, TextStyle(fontSize = 12.sp * K, fontWeight = FontWeight.Bold))
     val bxl = (target.x - r.size.width / 2f - 10f).coerceIn(4f, planW - r.size.width - 24f); val byt = tBlock.y - r.size.height - 18f
     drawRoundRect(text, Offset(bxl, byt), Size(r.size.width + 20f, r.size.height + 10f), CornerRadius(8f))
-    drawText(tm, tag, Offset(bxl + 10f, byt + 5f), style = TextStyle(color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold))
+    drawText(tm, tag, Offset(bxl + 10f, byt + 5f), style = TextStyle(color = Color.White, fontSize = 12.sp * K, fontWeight = FontWeight.Bold))
 
     // ---- 오른쪽: 단면(그 열을 옆에서 본 모습) ----
     val sx = planW + w * 0.03f; val sw = w - sx - w * 0.02f
     label(tm, "옆에서 본 모습", Offset(sx, 6f), text, 13.sp, bold = true)
-    label(tm, "${loc.block} 베이 %02d · 열 %02d".format(loc.bay, loc.row), Offset(sx, 28f), sub, 11.sp)
+    label(tm, "${loc.block} 베이 %02d · 열 %02d".format(loc.bay, loc.row), Offset(sx, 8f + 20f * K), sub, 11.sp)
     val tiers = 5; val stackCols = 5
     val gT = h * 0.18f; val gB = h * 0.70f
     val cellW = (sw - 24f) / stackCols; val cellH = (gB - gT - 30f) / (tiers + 0.6f)
@@ -235,17 +296,15 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
         }
     }
     drawLine(sub, Offset(sx, gB), Offset(sx + sw, gB), strokeWidth = 3f)
-    for (t in 1..tiers) label(tm, "${t}단", Offset(sx + sw + 2f - 28f, gB - t * cellH + cellH / 2 - 8f), sub, 9.sp)
+    for (t in 1..tiers) label(tm, "${t}단", Offset(sx + sw - 14f - 20f * K, gB - t * cellH + cellH / 2 - 8f * K), Color.White, 10.sp, bold = true)
     // 트럭(옆모습) 대기 위치
-    val tkY = gB + 8f
-    drawRoundRect(brand, Offset(sx + 6f, tkY), Size(sw * 0.28f, 26f), CornerRadius(5f))
-    drawRect(Color(0xFF9AA1A9), Offset(sx + 6f + sw * 0.28f, tkY + 10f), Size(sw * 0.6f, 10f))
-    for (wx in listOf(0.12f, 0.5f, 0.75f)) drawCircle(Color(0xFF333333), 6f, Offset(sx + 6f + sw * wx, tkY + 28f))
-    label(tm, "트럭 대는 줄", Offset(sx, tkY + 40f), sub, 10.sp)
+    val tkY = gB + 6f
+    sideTruck(tm, Offset(sx + 2f, tkY), sw - 4f, h * 0.075f, brand)
     // 범례
-    val ly = h * 0.86f
-    drawRect(accent, Offset(sx, ly), Size(18f, 12f)); label(tm, "내 컨테이너", Offset(sx + 24f, ly - 3f), text, 11.sp)
-    drawLine(accent, Offset(sx, ly + 26f), Offset(sx + 18f, ly + 26f), strokeWidth = 5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f)))
-    label(tm, "가는 길", Offset(sx + 24f, ly + 19f), text, 11.sp)
-    drawRect(CRANE, Offset(sx, ly + 44f), Size(18f, 10f)); label(tm, "크레인", Offset(sx + 24f, ly + 38f), text, 11.sp)
+    val ly = h * 0.80f
+    val lh = 18f * K
+    drawRect(accent, Offset(sx, ly + 3f), Size(18f, 12f)); label(tm, "내 컨테이너", Offset(sx + 26f, ly - 4f), text, 11.sp)
+    drawLine(accent, Offset(sx, ly + lh + 9f), Offset(sx + 18f, ly + lh + 9f), strokeWidth = 5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f)))
+    label(tm, "가는 길", Offset(sx + 26f, ly + lh - 4f), text, 11.sp)
+    drawRect(CRANE, Offset(sx, ly + 2 * lh + 4f), Size(18f, 10f)); label(tm, "크레인", Offset(sx + 26f, ly + 2 * lh - 4f), text, 11.sp)
 }
