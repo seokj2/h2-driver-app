@@ -332,7 +332,5 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
         Text("오늘 ${l.jobsDone}건 끝 · 남은 일 ${left}건 · 퇴근 ${clk(sim.shiftEnd)}",
             style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
-        Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분", color = C.sub, style = MaterialTheme.typography.bodyMedium)
-        Text("충전 %.1fkg · 회사 카드 결제, 영수증 자동 정산".format(addKg), color = C.sub, style = MaterialTheme.typography.bodyMedium)
     }
 }
