@@ -15,6 +15,7 @@
     <!-- 순정 내비 위 팝업(헤즈업 알림)과 도착 때 앱 다시 띄우기 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- 음성 안내(TTS)·음성 인식·사진 앱 찾기(Android 11+) -->
     <queries>

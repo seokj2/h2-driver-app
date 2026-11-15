@@ -131,7 +131,9 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
         if (fast()) return   // 빨리 돌리는 시연 중에는 앱을 오가지 않음
         if (d != null) {
             navigate(d.to)
-            popups.show("${sim.world.name(d.to)} · ${kr.bighero.h2.core.clock(d.end)} 도착", "도착하면 H2 회랑 기사 앱이 다시 열려요")
+            val after = sim.upcoming().firstOrNull { it.start >= d.end - 0.01 }
+            popups.show("${sim.world.name(d.to)} · ${kr.bighero.h2.core.clock(d.end)} 도착",
+                "도착하면 · " + (if (after == null) "오늘 일 끝" else if (after.kind.name.startsWith("DRIVE")) "${sim.world.name(after.to)}(으)로 출발" else after.note.ifBlank { after.kind.label }) + "\n도착하면 앱이 다시 열려요")
         } else if (was != null) {
             val s = sim.currentSeg()
             popups.bringToFront("도착 · ${s?.let { sim.world.name(it.to) } ?: ""}", s?.note?.ifBlank { s.kind.label } ?: "다음 할 일을 확인하세요")

@@ -29,13 +29,52 @@ class Popups(private val ctx: Context, private val app: Class<*>) {
         .setSmallIcon(ctx.applicationInfo.icon).setContentTitle(title).setContentText(body)
         .setCategory(Notification.CATEGORY_NAVIGATION).setAutoCancel(true).setContentIntent(open())
 
-    /** 순정 내비 위에 뜨는 작은 팝업 */
+    // ---- 떠 있는 팝업 창(다른 앱 위에 그리기 권한이 있을 때): 순정 내비 오른쪽 위에 우리 카드 ----
+    private val wm = ctx.getSystemService(android.view.WindowManager::class.java)
+    private var card: android.widget.LinearLayout? = null
+    private var tTitle: android.widget.TextView? = null
+    private var tBody: android.widget.TextView? = null
+    private fun dp(v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
+    private fun overlay(title: String, body: String): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(ctx)) return false
+        try {
+            if (card == null) {
+                val c = android.widget.LinearLayout(ctx).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    setPadding(dp(22), dp(18), dp(22), dp(20))
+                    background = android.graphics.drawable.GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(18).toFloat(); setStroke(dp(1), 0xFFE2E5E9.toInt()) }
+                    elevation = dp(12).toFloat()
+                    setOnClickListener { ctx.startActivity(Intent(ctx, app).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }
+                }
+                val head = android.widget.TextView(ctx).apply {
+                    text = "  H2 회랑 기사"; textSize = 15f; setTextColor(0xFF16A37F.toInt()); typeface = android.graphics.Typeface.DEFAULT_BOLD
+                }
+                tTitle = android.widget.TextView(ctx).apply { textSize = 26f; setTextColor(0xFF111111.toInt()); typeface = android.graphics.Typeface.DEFAULT_BOLD; setPadding(0, dp(8), 0, dp(4)) }
+                tBody = android.widget.TextView(ctx).apply { textSize = 19f; setTextColor(0xFF555B63.toInt()) }
+                c.addView(head); c.addView(tTitle); c.addView(tBody)
+                val lp = android.view.WindowManager.LayoutParams(dp(560), android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                    android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, android.graphics.PixelFormat.TRANSLUCENT).apply {
+                    gravity = android.view.Gravity.TOP or android.view.Gravity.END; x = dp(130); y = dp(90)
+                }
+                wm?.addView(c, lp); card = c
+            }
+            tTitle?.text = title; tBody?.text = body
+            return true
+        } catch (_: Throwable) { card = null; return false }
+    }
+    /** 팝업 창 닫기 */
+    fun hide() { try { card?.let { wm?.removeView(it) } } catch (_: Throwable) {}; card = null }
+
+    /** 순정 내비 위에 뜨는 팝업(창을 못 띄우면 헤즈업 알림) */
     fun show(title: String, body: String) {
+        if (overlay(title, body)) return
         try { nm?.notify(ID, builder(title, body).build()) } catch (_: Throwable) {}
     }
 
-    /** 도착: 우리 앱을 앞으로 */
+    /** 도착: 팝업을 닫고 우리 앱을 앞으로 */
     fun bringToFront(title: String, body: String) {
+        hide()
         try { ctx.startActivity(Intent(ctx, app).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) } catch (_: Throwable) {}
         try { nm?.notify(ID, builder(title, body).setFullScreenIntent(open(), true).build()) } catch (_: Throwable) {}
     }
