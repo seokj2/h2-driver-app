@@ -330,7 +330,8 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
         val l = sim.ledgerAt(now)
         val left = sim.segs.filter { it.start >= now && it.job != null }.mapNotNull { it.job }.toSet().size
         Text("오늘 ${l.jobsDone}건 끝 · 남은 일 ${left}건 · 퇴근 ${clk(sim.shiftEnd)}",
-            style = MaterialTheme.typography.titleMedium)
+            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = C.brand,
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.brand.copy(alpha = 0.12f)).padding(horizontal = 14.dp, vertical = 10.dp))
         Spacer(Modifier.weight(1f))
     }
 }
