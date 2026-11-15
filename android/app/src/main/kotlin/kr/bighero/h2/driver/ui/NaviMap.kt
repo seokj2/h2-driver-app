@@ -61,6 +61,16 @@ import org.maplibre.geojson.Point
 private const val STYLE_DAY = "https://tiles.openfreemap.org/styles/positron"
 private const val STYLE_NIGHT = "https://tiles.openfreemap.org/styles/dark"
 
+/** 지도 하나를 화면 전환 사이에 계속 씀 */
+private object Keep {
+    var ctx: android.content.Context? = null
+    var view: MapView? = null
+    var dark: Boolean? = null
+    val map = mutableStateOf<MapLibreMap?>(null)
+    val style = mutableStateOf<Style?>(null)
+    val follow = mutableStateOf(true)
+}
+
 private val isRobolectric = Build.FINGERPRINT == "robolectric"
 
 private fun ll(p: DoubleArray) = Point.fromLngLat(p[1], p[0])
@@ -78,22 +88,28 @@ fun NaviMap(sim: DaySim, ui: UiState, modifier: Modifier) {
     if (isRobolectric) { MapPane(sim, ui, modifier); return }
     val ctx = LocalContext.current
     val roads = remember { Roads.parse(ctx.assets.open("routes.json").bufferedReader(Charsets.UTF_8).readText()) }
-    var map by remember { mutableStateOf<MapLibreMap?>(null) }
-    var style by remember { mutableStateOf<Style?>(null) }
-    var follow by remember { mutableStateOf(true) }
+    var map by Keep.map
+    var style by Keep.style
+    var follow by Keep.follow
     val dark = C.dark
-    val view = remember {
-        MapLibre.getInstance(ctx.applicationContext)
-        // SurfaceView(기본)는 위에 그림자 카드가 겹치면 통째로 검게 깜빡임 → TextureView로 그림
-        MapView(ctx, MapLibreMapOptions.createFromAttributes(ctx).textureMode(true)).apply {
-            onCreate(null)
-            getMapAsync { m ->
-                m.uiSettings.isCompassEnabled = false
-                m.uiSettings.isRotateGesturesEnabled = true
-                m.uiSettings.isTiltGesturesEnabled = false
-                m.addOnCameraMoveStartedListener { reason -> if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) follow = false }
-                map = m
-            }
+    // 지도는 화면이 바뀌어도(운전 구간이 바뀔 때 등) 하나를 계속 씀: 새로 만들면 타일이 다시 올 때까지 검게 보임
+    val view = remember(ctx) {
+        Keep.view?.takeIf { Keep.ctx === ctx }?.also { (it.parent as? android.view.ViewGroup)?.removeView(it) } ?: run {
+            Keep.view?.let { it.onPause(); it.onStop(); it.onDestroy() }
+            map = null; style = null; Keep.dark = null
+            MapLibre.getInstance(ctx.applicationContext)
+            // SurfaceView(기본)는 위에 그림자 카드가 겹치면 통째로 검게 깜빡임 → TextureView로 그림. 불러오는 동안은 밝은 회색
+            MapView(ctx, MapLibreMapOptions.createFromAttributes(ctx).textureMode(true)
+                .foregroundLoadColor(android.graphics.Color.rgb(0xF2, 0xF3, 0xF5))).apply {
+                onCreate(null)
+                getMapAsync { m ->
+                    m.uiSettings.isCompassEnabled = false
+                    m.uiSettings.isRotateGesturesEnabled = true
+                    m.uiSettings.isTiltGesturesEnabled = false
+                    m.addOnCameraMoveStartedListener { reason -> if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) Keep.follow.value = false }
+                    Keep.map.value = m
+                }
+            }.also { Keep.view = it; Keep.ctx = ctx }
         }
     }
     val life = LocalLifecycleOwner.current.lifecycle
@@ -102,17 +118,20 @@ fun NaviMap(sim: DaySim, ui: UiState, modifier: Modifier) {
             when (e) {
                 Lifecycle.Event.ON_START -> view.onStart(); Lifecycle.Event.ON_RESUME -> view.onResume()
                 Lifecycle.Event.ON_PAUSE -> view.onPause(); Lifecycle.Event.ON_STOP -> view.onStop()
+                Lifecycle.Event.ON_DESTROY -> { view.onDestroy(); if (Keep.view === view) { Keep.view = null; Keep.ctx = null; Keep.map.value = null; Keep.style.value = null; Keep.dark = null } }
                 else -> {}
             }
         }
         life.addObserver(obs)
         if (life.currentState.isAtLeast(Lifecycle.State.STARTED)) view.onStart()
         if (life.currentState.isAtLeast(Lifecycle.State.RESUMED)) view.onResume()
-        onDispose { life.removeObserver(obs); view.onPause(); view.onStop(); view.onDestroy() }
+        onDispose { life.removeObserver(obs) }
     }
-    // 스타일(낮/밤) 올리고 우리 층 만들기
+    // 스타일(낮/밤) 올리고 우리 층 만들기: 낮/밤이 바뀔 때만
     LaunchedEffect(map, dark) {
         val m = map ?: return@LaunchedEffect
+        if (Keep.dark == dark && style != null) return@LaunchedEffect
+        Keep.dark = dark
         style = null
         m.setStyle(Style.Builder().fromUri(if (dark) STYLE_NIGHT else STYLE_DAY)) { s -> addLayers(s); style = s }
     }
@@ -178,10 +197,9 @@ fun NaviMap(sim: DaySim, ui: UiState, modifier: Modifier) {
                 val (st, m) = road.next(f)
                 Text(if (m >= 1000) "%.1fkm".format(m / 1000) else "${(m / 10).toInt() * 10}m", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 Text(st?.text ?: "${sim.label(b)} 도착", color = Color.White, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text("${sim.label(b)}까지 %.1fkm · 도착 ${clock(cur.end)}".format((1 - f) * road.length / 1000), color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
             } else {
                 Text(if (cur != null) "${cur.kind.label} 중 · ${sim.label(a)}" else "${sim.label(a)}에 있어요", color = Color.White, style = MaterialTheme.typography.titleMedium)
-                Text(if (sim.idle) "추천 일정의 길을 주황 점선으로 보여 줘요" else "끝나는 시각 ${clock(cur?.end ?: ui.now)}", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
+                if (!sim.idle) Text("끝나는 시각 ${clock(cur?.end ?: ui.now)}", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
             }
         }
         // 따라가기 / 전체 보기

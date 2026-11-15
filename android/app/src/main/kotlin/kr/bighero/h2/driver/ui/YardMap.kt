@@ -170,7 +170,7 @@ private var K = 1f   // 그림 크기에 맞춘 글자 배율
 
 private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color) {
     val w = size.width; val h = size.height
-    K = (h / 600f).coerceIn(1.15f, 2.4f)
+    K = (h * 0.03f / 11.sp.toPx()).coerceIn(0.9f, 3f)   // 그림 높이에 맞춰 글자 크기를 정함(화면 밀도와 무관)
     val planW = w * 0.73f                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
     // ---- 바다·배·안벽 ----
     val seaH = h * 0.10f
@@ -262,7 +262,7 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     // 도착 지점: 베이 앞 정차 표시 + 칸까지 점선
     drawLine(accent, Offset(target.x, stopY), Offset(target.x, target.y), strokeWidth = 3f, pathEffect = dash)
     val fromX = if (lastLine) myGateX else laneX
-    topTruck(Offset(target.x + laneW * 0.6f, stopY), laneW * 4.2f, laneW * 0.85f, brand, facingRight = target.x >= fromX)
+    topTruck(Offset(target.x + (bw - 8f) / bays * 1.4f, stopY), (bw - 8f) / bays * 3f, laneW * 0.62f, brand, facingRight = target.x >= fromX)
     // 내 칸 표시 핀
     drawCircle(accent.copy(alpha = 0.25f), 26f, target)
     drawCircle(Color.White, 15f, target); drawCircle(accent, 10f, target)
@@ -273,38 +273,60 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     drawRoundRect(text, Offset(bxl, byt), Size(r.size.width + 20f, r.size.height + 10f), CornerRadius(8f))
     drawText(tm, tag, Offset(bxl + 10f, byt + 5f), style = TextStyle(color = Color.White, fontSize = 12.sp * K, fontWeight = FontWeight.Bold))
 
-    // ---- 오른쪽: 단면(그 열을 옆에서 본 모습) ----
-    val sx = planW + w * 0.03f; val sw = w - sx - w * 0.02f
-    label(tm, "옆에서 본 모습", Offset(sx, 6f), text, 13.sp, bold = true)
-    label(tm, "${loc.block} 베이 %02d · 열 %02d".format(loc.bay, loc.row), Offset(sx, 8f + 20f * K), sub, 11.sp)
+    // ---- 오른쪽: 그 줄을 옆에서 본 모습(단 = 아래부터 몇 번째, 열 = 옆으로 몇 번째) ----
+    val sx = planW + w * 0.025f; val sw = w - sx - w * 0.015f
+    label(tm, "옆에서 보면", Offset(sx, 6f), text, 13.sp, bold = true)
+    label(tm, "크레인이 ${loc.tier}단을 집어", Offset(sx, 10f + 22f * K), sub, 10.sp)
+    label(tm, "내 트럭에 실어요", Offset(sx, 12f + 38f * K), sub, 10.sp)
     val tiers = 5; val stackCols = 5
-    val gT = h * 0.18f; val gB = h * 0.70f
-    val cellW = (sw - 24f) / stackCols; val cellH = (gB - gT - 30f) / (tiers + 0.6f)
-    // 야드 크레인 문형
-    drawRect(CRANE, Offset(sx + 2f, gT), Size(10f, gB - gT)); drawRect(CRANE, Offset(sx + sw - 12f, gT), Size(10f, gB - gT))
-    drawRect(CRANE, Offset(sx + 2f, gT), Size(sw - 4f, 12f))
-    drawRect(Color(0xFF555B63), Offset(sx + 12f + (tRow % stackCols) * cellW + cellW * 0.2f, gT + 12f), Size(cellW * 0.6f, 10f))
-    drawLine(Color(0xFF555B63), Offset(sx + 12f + (tRow % stackCols + 0.5f) * cellW, gT + 22f), Offset(sx + 12f + (tRow % stackCols + 0.5f) * cellW, gT + 40f), strokeWidth = 2f)
-    val myCol = tRow % stackCols
+    val tl = 30f * K                                   // 왼쪽 "N단" 글자 자리
+    val fx = sx + tl; val fw = sw - tl                 // 크레인 문형 안쪽
+    val gT = h * 0.20f; val gB = h * 0.60f
+    val legW = 10f; val beamH = 16f * K
+    val cellW = (fw - 2 * legW - 8f) / stackCols; val cellH = (gB - gT - beamH - 34f) / tiers
+    val myCol = (loc.row - 1).mod(stackCols)
+    // 야드 크레인(문형): 다리 둘 + 위 빔 + 집게
+    drawRect(CRANE, Offset(fx, gT), Size(legW, gB - gT)); drawRect(CRANE, Offset(fx + fw - legW, gT), Size(legW, gB - gT))
+    drawRect(CRANE, Offset(fx, gT), Size(fw, beamH))
+    label(tm, "야드 크레인", Offset(fx + fw / 2, gT + beamH / 2), Color(0xFF3A3000), 9.sp, bold = true, center = true)
+    val colX = { c: Int -> fx + legW + 4f + c * cellW }
+    val myTop = gB - loc.tier.coerceAtMost(tiers) * cellH
+    // 컨테이너 쌓임: 내 열만 진하게
     for (cI in 0 until stackCols) {
-        val height = if (cI == myCol) tiers.coerceAtLeast(loc.tier) else 2 + (cI * 3 + loc.bay) % 4
+        val height = if (cI == myCol) loc.tier.coerceAtMost(tiers) else 1 + (cI * 3 + loc.bay) % 5
         for (t in 0 until height) {
             val mine = cI == myCol && t == loc.tier - 1
-            val o = Offset(sx + 12f + cI * cellW + 2f, gB - (t + 1) * cellH)
-            drawRect(if (mine) accent else BOXES[(cI * 2 + t) % BOXES.size].copy(alpha = if (cI == myCol) 0.9f else 0.5f), o, Size(cellW - 4f, cellH - 3f))
-            if (mine) drawRect(Color.White, o, Size(cellW - 4f, cellH - 3f), style = Stroke(3f))
+            val o = Offset(colX(cI) + 2f, gB - (t + 1) * cellH + 2f)
+            drawRoundRect(if (mine) accent else BOXES[(cI * 2 + t) % BOXES.size].copy(alpha = if (cI == myCol) 0.85f else 0.35f), o, Size(cellW - 4f, cellH - 4f), CornerRadius(3f))
+            if (mine) {
+                drawRoundRect(Color.White, o, Size(cellW - 4f, cellH - 4f), CornerRadius(3f), style = Stroke(3f))
+            }
         }
     }
-    drawLine(sub, Offset(sx, gB), Offset(sx + sw, gB), strokeWidth = 3f)
-    for (t in 1..tiers) label(tm, "${t}단", Offset(sx + sw - 14f - 20f * K, gB - t * cellH + cellH / 2 - 8f * K), Color.White, 10.sp, bold = true)
-    // 트럭(옆모습) 대기 위치
-    val tkY = gB + 6f
-    sideTruck(tm, Offset(sx + 2f, tkY), sw - 4f, h * 0.075f, brand)
-    // 범례
-    val ly = h * 0.80f
+    // 집게가 내 컨테이너 위에 내려와 있음
+    val hx = colX(myCol) + cellW / 2
+    drawLine(Color(0xFF555B63), Offset(hx, gT + beamH), Offset(hx, myTop - 6f), strokeWidth = 3f)
+    drawRect(Color(0xFF555B63), Offset(colX(myCol) + 4f, myTop - 6f), Size(cellW - 8f, 6f))   // 집게(스프레더)
+    // 내 컨테이너 → 트럭: 크레인 다리 쪽으로 내려 실음
+    val dn = Path().apply { moveTo(colX(myCol) + cellW, myTop + cellH / 2); lineTo(fx + fw - legW - 4f, myTop + cellH / 2); lineTo(fx + fw - legW - 4f, gB + 26f * K) }
+    drawPath(dn, accent, style = Stroke(3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))))
+    val ax = fx + fw - legW - 4f; val ay = gB + 26f * K
+    drawPath(Path().apply { moveTo(ax - 8f, ay - 10f); lineTo(ax + 8f, ay - 10f); lineTo(ax, ay); close() }, accent)
+    // 왼쪽 단 번호, 아래 열 번호
+    for (t in 1..tiers) label(tm, "${t}단", Offset(sx + tl / 2, gB - (t - 0.5f) * cellH), if (t == loc.tier) accent else sub, 10.sp, bold = t == loc.tier, center = true)
+    drawLine(sub, Offset(fx - 4f, gB), Offset(fx + fw + 4f, gB), strokeWidth = 3f)
+    for (cI in 0 until stackCols) label(tm, "${cI + 1}", Offset(colX(cI) + cellW / 2, gB + 12f * K), if (cI == myCol) accent else sub, 9.sp, bold = cI == myCol, center = true)
+    label(tm, "열", Offset(sx + tl / 2, gB + 12f * K), sub, 9.sp, center = true)
+    // 내 칸을 가리키는 표시: 단 번호에서 내 칸까지 점선
+    drawLine(accent, Offset(fx + legW, gB - (loc.tier - 0.5f) * cellH), Offset(colX(myCol) + 2f, gB - (loc.tier - 0.5f) * cellH), strokeWidth = 3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)))
+    // 트럭이 서는 곳(크레인 다리 옆 차로)
+    val tkY = gB + 30f * K
+    sideTruck(tm, Offset(fx, tkY), fw, h * 0.08f, brand)
+    label(tm, "내 트럭 서는 곳", Offset(fx + fw / 2, tkY + h * 0.08f + 12f * K), text, 10.sp, center = true)
+    // 범례(왼쪽 배치도용)
+    val ly = h * 0.85f
     val lh = 18f * K
     drawRect(accent, Offset(sx, ly + 3f), Size(18f, 12f)); label(tm, "내 컨테이너", Offset(sx + 26f, ly - 4f), text, 11.sp)
     drawLine(accent, Offset(sx, ly + lh + 9f), Offset(sx + 18f, ly + lh + 9f), strokeWidth = 5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f)))
     label(tm, "가는 길", Offset(sx + 26f, ly + lh - 4f), text, 11.sp)
-    drawRect(CRANE, Offset(sx, ly + 2 * lh + 4f), Size(18f, 10f)); label(tm, "크레인", Offset(sx + 26f, ly + 2 * lh - 4f), text, 11.sp)
 }
