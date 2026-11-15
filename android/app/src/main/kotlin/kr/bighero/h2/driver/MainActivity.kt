@@ -66,7 +66,7 @@ private data class Tab(val label: String, val icon: ImageVector)
 
 private val tabs = listOf(
     Tab("오늘", Icons.Filled.Home), Tab("전체 일정", Icons.Filled.DateRange),
-    Tab("알림", Icons.Filled.Notifications), Tab("수소", Icons.Filled.Star),
+    Tab("알림", Icons.Filled.Notifications), Tab("충전", Icons.Filled.Star),
 )
 
 @Composable
@@ -76,7 +76,7 @@ fun App(vm: DriverViewModel) {
     CompositionLocalProvider(LocalContentColor provides C.text) { Box(Modifier.fillMaxSize().background(C.bg).safeDrawingPadding()) {
         when {
             ui.loading -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(); Spacer(Modifier.width(12.dp)); Text("오늘 배차 자료를 읽는 중", color = C.sub)
+                CircularProgressIndicator(); Spacer(Modifier.width(12.dp)); Text("상용차 기사용 배차·충전 도우미 · 오늘 배차 자료를 읽는 중", color = C.sub)
             }
             ui.error != null -> Text(ui.error!!, color = C.bad, modifier = Modifier.padding(24.dp))
             else -> BoxWithConstraints(Modifier.fillMaxSize()) {

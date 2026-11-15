@@ -15,8 +15,8 @@ def card(name, lines, sec):
     for i, (t, f, c) in enumerate(lines):
         d.text((160, y), t, font=f, fill=c); y += (100 if f is f_big else 60)
     p = os.path.join(tmp, name); im.save(p); seq.append((p, sec))
-card("a_intro.png", [("H2 회랑 기사", f_big, (5, 5, 5)), ("수소 트럭 운전자용 실시간 배차 일정 추천 · 플레오스 Connect", f_mid, (60, 60, 60)),
-                     ("시연: 2026-07-16 하루, 울산 대한유화 공장 소속 수소 트랙터 \"수소 5호\"", f_mid, (107, 107, 107))], 4.0)
+card("a_intro.png", [("H2 회랑 기사", f_big, (5, 5, 5)), ("상용차 기사를 위한 차량 내 배차·충전 도우미 · 플레오스 Connect", f_mid, (60, 60, 60)),
+                     ("시연: 울산–부산신항 컨테이너 운송, 수소전기 트랙터 \"수소 5호\"의 하루(2026-07-16)", f_mid, (107, 107, 107))], 4.0)
 for fn, sec, cap in rows:
     im = Image.open(os.path.join(src, fn)).convert("RGB")
     if im.size != (W, H): im = im.resize((W, H), Image.LANCZOS)
@@ -27,7 +27,7 @@ for fn, sec, cap in rows:
     d.text((W / 2, H - 86), cap, font=f_cap, fill="white", anchor="mm")
     im = Image.alpha_composite(im.convert("RGBA"), ov).convert("RGB")
     p = os.path.join(tmp, "f_" + fn); im.save(p); seq.append((p, float(sec)))
-card("z_outro.png", [("앱이 직접 계산하고, 상황이 바뀌면 다시 추천", f_big, (5, 5, 5)),
+card("z_outro.png", [("운전석에서 일감·충전·터미널을 한 화면으로", f_big, (5, 5, 5)),
                      ("접안 지연 확률 · 수소 잔량 · 마감 · 근무시간을 돈으로 따져 일정을 고릅니다", f_mid, (60, 60, 60)),
                      ("큰 버튼 두 개 · 음성 안내 · 컨테이너·충전소 정보는 시연용 예시 값", f_mid, (107, 107, 107))], 4.0)
 lst = os.path.join(tmp, "concat.txt")

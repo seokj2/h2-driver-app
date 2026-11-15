@@ -83,8 +83,8 @@ fun TopBar(vm: DriverViewModel, ui: UiState, wide: Boolean) {
         }
         Spacer(Modifier.width(12.dp))
         if (!wide) Spacer(Modifier.weight(1f)) else Column(Modifier.weight(1f)) {
-            Text("H2 회랑 · ${sim.driver.name}", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${sim.bundle.meta.day} · 근무 ${clock(sim.shiftStart)}~${clock(sim.shiftEnd)}", color = C.sub, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            Text("H2 회랑 기사 · ${sim.driver.name}", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("상용차 기사용 배차·충전 도우미 · 근무 ${clock(sim.shiftStart)}~${clock(sim.shiftEnd)}", color = C.sub, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
             FreshnessDot(vm, ui.now)

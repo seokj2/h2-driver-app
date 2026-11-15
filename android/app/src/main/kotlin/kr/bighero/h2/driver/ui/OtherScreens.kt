@@ -93,6 +93,11 @@ fun H2Screen(vm: DriverViewModel, ui: UiState) {
     val sim = vm.sim
     @Suppress("UNUSED_VARIABLE") val tick = ui.tick
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Chip("수소전기 트랙터 · 탱크 %.0fkg".format(vm.vehicle.tankKg()), C.brand, filled = true)
+            Spacer(Modifier.width(8.dp))
+            Text("전기 트럭은 같은 화면이 배터리(kWh)·급속충전기로 바뀌어요(계획)", color = C.sub, style = MaterialTheme.typography.labelMedium)
+        }
         H2Gauge(vm.vehicle.h2Kg(), vm.vehicle.tankKg(), sim.world.kgkm, sim.world.reserve, Modifier.fillMaxWidth())
         Text("값 출처: ${vm.vehicle.source} · 잔량 15%%(%.1fkg) 아래로 내려가는 일정은 추천하지 않아요".format(sim.world.reserve), color = C.sub, style = MaterialTheme.typography.bodyMedium)
         val ch = sim.segs.filter { it.kind == SegKind.CHARGE }

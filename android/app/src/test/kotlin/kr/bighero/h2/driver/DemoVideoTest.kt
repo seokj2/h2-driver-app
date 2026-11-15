@@ -107,7 +107,7 @@ class DemoVideoTest {
             drive(4.0, vm().sim.segs.last().end + 1)
         }
         tab("알림"); shot(3.5, "알림 · 접안 지연·다른 트럭이 가져간 일감·내가 보낸 알림")
-        tab("수소"); shot(3.5, "수소 · 충전소 운영 여부, 대기 대수와 예약 요청(예시)")
+        tab("충전"); shot(3.5, "충전 · 남은 연료, 충전소 운영 여부, 대기 대수와 예약 요청(예시)")
         tab("오늘"); shot(4.0, "하루 끝 · 오늘 한 일과 아낀 용차비")
         File(dir, "list.txt").writeText(list.toString())
     }
