@@ -256,14 +256,17 @@ private fun StepRow(sim: DaySim, st: Step, first: Boolean, now: Double) {
 /** 왜 이 일정? 점수 = 용차 단가 − 수소 − 통행료 − 대기·노는 시간 − 늦음 − 놓침 위험 − 초과근무 */
 @Composable
 private fun DaySummary(sim: DaySim, now: Double) {
+    // 기사가 궁금한 것: 끝낸 일, 달린 거리, 일한 시간, 남은 근무(회사용 숫자인 아낀 용차비·비용은 배차 담당자 화면으로)
     val l = sim.ledgerAt(now)
+    val worked = (now - sim.shiftStart).coerceAtLeast(0.0) / 60
+    val left = (sim.shiftEnd - now).coerceAtLeast(0.0) / 60
     Panel(Modifier.fillMaxWidth()) {
-        Text("오늘 누적", color = C.sub, style = MaterialTheme.typography.labelMedium)
+        Text("오늘", color = C.sub, style = MaterialTheme.typography.labelMedium)
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Stat("맡은 일", "${l.jobsDone}건")
-            Stat("아낀 용차비", won(l.fareSaved))
-            Stat("수소·통행료", won(l.h2Won + l.tollWon))
-            Stat("놓침", "${l.missN}건", if (l.missN > 0) C.bad else C.text)
+            Stat("끝낸 일", "${l.jobsDone}건")
+            Stat("달린 거리", "%.0fkm".format(l.kmEmpty + l.kmLoaded))
+            Stat("일한 시간", DaySim.fmtH(worked))
+            Stat("퇴근까지", if (now < sim.shiftStart) "출근 전" else DaySim.fmtH(left), if (now >= sim.shiftStart && left < 1) C.warn else C.text)
         }
     }
 }

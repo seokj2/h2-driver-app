@@ -69,7 +69,7 @@ class DemoVideoTest {
                 click("상·하차 끝났어요"); shot(3.5, "상·하차 끝 · 컨테이너 사진과 전자 인수증 서명"); click("보내기")
             }
             if (chargeShots == 0 && seg != null && seg.kind == SegKind.WAIT && sim.bundle.chargers.any { it.id == seg.from }) {
-                chargeShots = -1; shot(3.5, "충전소 도착 · 지도 대신 충전 화면: 내 차례(문 여는 시각), 다음 일, 오늘 번 돈")
+                chargeShots = -1; shot(3.5, "충전소 도착 · 지도 대신 충전 화면: 내 차례(문 여는 시각), 다음 일, 남은 일과 퇴근")
             }
             if (seg != null && seg.kind == SegKind.CHARGE) {
                 val f = (sim.now - seg.start) / (seg.end - seg.start)
@@ -118,7 +118,7 @@ class DemoVideoTest {
         }
         tab("알림"); shot(3.5, "알림 · 접안 지연·다른 트럭이 가져간 일감·내가 보낸 알림")
         tab("충전"); shot(3.5, "충전 · 남은 연료, 충전소 운영 여부, 대기 대수와 예약 요청(예시)")
-        tab("오늘"); shot(4.0, "하루 끝 · 오늘 한 일과 아낀 용차비")
+        tab("오늘"); shot(4.0, "하루 끝 · 끝낸 일, 달린 거리, 일한 시간, 퇴근까지 남은 시간")
         // 다른 날: 수소가 적게 남은 채 출근 → 충전을 넣은 일정 → 충전 장면
         ui { restart(14.0) }
         settle()

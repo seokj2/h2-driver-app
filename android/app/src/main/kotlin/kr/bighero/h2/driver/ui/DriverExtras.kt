@@ -333,7 +333,7 @@ fun chargeSegNow(sim: DaySim): Seg? {
     return null
 }
 
-/** 충전소에 있는 동안 지도 대신: 대기 순번 또는 충전 진행, 끝나면 불러 드림, 다음 일, 오늘 번 돈 */
+/** 충전소에 있는 동안 지도 대신: 대기 순번 또는 충전 진행, 끝나면 불러 드림, 다음 일, 오늘 남은 일 */
 @Composable
 fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Modifier) {
     val sim = vm.sim
@@ -390,10 +390,10 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
                 Text(sim.label(nextJob.job!!) + (slack?.takeIf { it >= 0 }?.let { " · 반입 마감까지 여유 ${DaySim.fmtH(it)}" } ?: ""), color = C.sub, style = MaterialTheme.typography.bodyLarge)
             } else Text("충전 끝나면 새 일정을 추천해 드려요", style = MaterialTheme.typography.titleMedium)
         }
-        // 오늘 번 돈·남은 일
+        // 오늘 한 일·남은 일·퇴근
         val l = sim.ledgerAt(now)
         val left = sim.segs.filter { it.start >= now && it.job != null }.mapNotNull { it.job }.toSet().size
-        Text("오늘 ${l.jobsDone}건 · 운임 ${kr.bighero.h2.core.won(l.fareSaved)} · 남은 일 ${left}건 · 이번 일정 끝 ${clk(sim.segs.last().end)}",
+        Text("오늘 ${l.jobsDone}건 끝 · 남은 일 ${left}건 · 이번 일정 끝 ${clk(sim.segs.last().end)} · 퇴근 ${clk(sim.shiftEnd)}",
             style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
         Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분 (예시)", color = C.sub, style = MaterialTheme.typography.bodyMedium)
