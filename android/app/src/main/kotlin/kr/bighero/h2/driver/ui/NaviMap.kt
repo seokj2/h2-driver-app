@@ -42,6 +42,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
@@ -83,7 +84,8 @@ fun NaviMap(sim: DaySim, ui: UiState, modifier: Modifier) {
     val dark = C.dark
     val view = remember {
         MapLibre.getInstance(ctx.applicationContext)
-        MapView(ctx).apply {
+        // SurfaceView(기본)는 위에 그림자 카드가 겹치면 통째로 검게 깜빡임 → TextureView로 그림
+        MapView(ctx, MapLibreMapOptions.createFromAttributes(ctx).textureMode(true)).apply {
             onCreate(null)
             getMapAsync { m ->
                 m.uiSettings.isCompassEnabled = false
