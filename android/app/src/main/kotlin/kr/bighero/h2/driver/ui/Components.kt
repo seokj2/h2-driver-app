@@ -3,6 +3,10 @@ package kr.bighero.h2.driver.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,9 +97,11 @@ fun TopBar(vm: DriverViewModel, ui: UiState, wide: Boolean) {
                 SmallButton(if (vm.voiceOn) "🔊" else "🔇", { vm.toggleVoice() })
             }
         }
-        Text(clock(ui.now), style = if (wide) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 12.dp))
-        // 시연 시계(실제 차량에서는 없앰): ▶/일시정지, 배속, 다음 일까지
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
+        // 시연 시계 조작(▶/일시정지, 배속, 다음 일까지)은 평소 숨김. 시계를 길게 누르면 열고 닫음(실제 차량에서는 없앰)
+        var demo by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+        Text(clock(ui.now), style = if (wide) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(horizontal = 12.dp).pointerInput(Unit) { detectTapGestures(onLongPress = { demo = !demo }) })
+        if (demo) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, C.line, RoundedCornerShape(12.dp)).padding(6.dp)) {
             SmallButton(if (ui.running) "❚❚" else "▶", { vm.toggleRun() }, selected = ui.running)
             if (wide) vm.speeds.forEach { s -> SmallButton("×$s", { vm.setSpeed(s) }, selected = ui.speed == s) }
