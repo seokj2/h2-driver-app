@@ -53,7 +53,8 @@ fun TodayScreen(vm: DriverViewModel, ui: UiState, wide: Boolean) {
             LeftColumn(vm, ui)
         }
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DaySummary(sim, ui.now)
+            // 건수·퇴근 같은 개인 정보는 쉴 때(일정 고를 때)만. 일하는 중에는 업무 정보만
+            if (sim.idle) DaySummary(sim, ui.now)
             // 터미널 안에서는 지도 대신 컨테이너 위치(장치장 배치도)
             val yard = sim.currentSeg()?.takeIf { it.kind == SegKind.TERMINAL && it.job != null }
             val chg = chargeSegNow(sim)
@@ -68,7 +69,7 @@ fun TodayScreen(vm: DriverViewModel, ui: UiState, wide: Boolean) {
         if (yard != null) YardPane(vm, yard, Modifier.fillMaxWidth().height(420.dp))
         else if (chg != null) ChargePane(vm, chg, ui.now, Modifier.fillMaxWidth().height(460.dp))
         else NaviMap(sim, ui, Modifier.fillMaxWidth().height(360.dp))
-        DaySummary(sim, ui.now)
+        if (sim.idle) DaySummary(sim, ui.now)
         Spacer(Modifier.height(8.dp))
     }
 }
@@ -256,19 +257,29 @@ private fun StepRow(sim: DaySim, st: Step, first: Boolean, now: Double) {
 /** 왜 이 일정? 점수 = 용차 단가 − 수소 − 통행료 − 대기·노는 시간 − 늦음 − 놓침 위험 − 초과근무 */
 @Composable
 private fun DaySummary(sim: DaySim, now: Double) {
-    // 기사가 궁금한 것: 끝낸 일, 달린 거리, 일한 시간, 남은 근무(회사용 숫자인 아낀 용차비·비용은 배차 담당자 화면으로)
+    // 기사가 궁금한 것: 오늘·이번 달 건수(운행 수당과 연결), 일한 시간, 퇴근·초과근무(회사용 숫자인 아낀 용차비·비용은 배차 담당자 화면으로)
     val l = sim.ledgerAt(now)
     val worked = (now - sim.shiftStart).coerceAtLeast(0.0) / 60
     val left = (sim.shiftEnd - now).coerceAtLeast(0.0) / 60
     Panel(Modifier.fillMaxWidth()) {
         Text("오늘", color = C.sub, style = MaterialTheme.typography.labelMedium)
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Stat("끝낸 일", "${l.jobsDone}건")
-            Stat("달린 거리", "%.0fkm".format(l.kmEmpty + l.kmLoaded))
+            Stat("오늘", "${l.jobsDone}건")
+            Stat("이번 달 (예시)", "${monthBefore(sim) + l.jobsDone}건")
             Stat("일한 시간", DaySim.fmtH(worked))
-            Stat("퇴근까지", if (now < sim.shiftStart) "출근 전" else DaySim.fmtH(left), if (now >= sim.shiftStart && left < 1) C.warn else C.text)
+            // 퇴근: 받은 일정이 근무 끝을 넘기면 초과근무 예상(수당이 붙는 시간)
+            val over = ((sim.segs.lastOrNull()?.end ?: now) - sim.shiftEnd)
+            if (now < sim.shiftStart) Stat("퇴근", clock(sim.shiftEnd))
+            else if (over > 1) Stat("퇴근 · 초과 예상", "${over.toInt()}분", C.warn)
+            else Stat("퇴근 ${clock(sim.shiftEnd)}까지", DaySim.fmtH(left), if (left < 1) C.warn else C.text)
         }
     }
+}
+
+/** 이번 달 오늘 전까지 한 건수(시연용 예시: 평일 하루 3건으로 가정). 실제로는 배차 서버 기록 */
+private fun monthBefore(sim: DaySim): Int {
+    val d = sim.bundle.meta.day.takeLast(2).toIntOrNull() ?: 1
+    return (d - 1) * 5 / 7 * 3
 }
 
 @Composable
