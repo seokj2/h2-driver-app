@@ -29,7 +29,7 @@ for fn, sec, cap in rows:
     p = os.path.join(tmp, "f_" + fn); im.save(p); seq.append((p, float(sec)))
 card("z_outro.png", [("앱이 직접 계산하고, 상황이 바뀌면 다시 추천", f_big, (5, 5, 5)),
                      ("접안 지연 확률 · 수소 잔량 · 마감 · 근무시간을 돈으로 따져 일정을 고릅니다", f_mid, (60, 60, 60)),
-                     ("다음 단계: Vehicle SDK · NaviHelper · TTS · 실시간 오더·선석·충전소 연결", f_mid, (107, 107, 107))], 4.0)
+                     ("큰 버튼 두 개 · 음성 안내 · 컨테이너·충전소 정보는 시연용 예시 값", f_mid, (107, 107, 107))], 4.0)
 lst = os.path.join(tmp, "concat.txt")
 with open(lst, "w") as f:
     for p, s in seq: f.write(f"file '{p}'\nduration {s}\n")

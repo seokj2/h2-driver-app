@@ -23,12 +23,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kr.bighero.h2.core.SegKind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kr.bighero.h2.core.AlertKind
 import kr.bighero.h2.core.DaySim
 import kr.bighero.h2.core.Plan
@@ -86,6 +92,34 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
     val endAll = sim.segs.lastOrNull()?.end ?: ui.now
     Panel(Modifier.fillMaxWidth(), color = C.panel2) {
         if (s == null) { Text("다음 일을 준비 중", style = MaterialTheme.typography.headlineSmall); return@Panel }
+        // 운전 중: 다음 할 일 + 남은 거리 + 도착 시각만 크게(주행 중 주의 분산 줄이기)
+        if (s.kind.name.startsWith("DRIVE") && s.start <= ui.now && s.from != s.to) {
+            val f = ((ui.now - s.start) / (s.end - s.start)).coerceIn(0.0, 1.0)
+            val km = vm.roads?.get(s.from, s.to)?.let { (1 - f) * it.length / 1000 }
+            val after = sim.upcoming().firstOrNull { it.start >= s.end - 0.01 }
+            Chip("운전 중", kindColor(s.kind), filled = true)
+            Spacer(Modifier.height(12.dp))
+            Text(sim.world.name(s.to), style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                if (km != null) {
+                    Text("%.1f".format(km), style = MaterialTheme.typography.displaySmall.copy(fontSize = 56.sp))
+                    Text("km", style = MaterialTheme.typography.titleLarge, color = C.sub, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, end = 28.dp))
+                }
+                Text(clock(s.end), style = MaterialTheme.typography.displaySmall.copy(fontSize = 56.sp))
+                Text("도착", style = MaterialTheme.typography.titleLarge, color = C.sub, modifier = Modifier.padding(start = 6.dp, bottom = 8.dp))
+            }
+            if (after != null) {
+                Spacer(Modifier.height(8.dp))
+                Text("도착하면 · " + (if (after.kind.name.startsWith("DRIVE")) "${sim.world.name(after.to)}(으)로 출발" else after.note.ifBlank { after.kind.label }),
+                    style = MaterialTheme.typography.titleLarge, color = C.sub)
+            }
+            Spacer(Modifier.height(12.dp))
+            RestLine(sim, ui.now)
+            Spacer(Modifier.height(12.dp))
+            BigButton("${vm.navi.label}로 길안내", { vm.navigate(s.to) }, Modifier.fillMaxWidth())
+            return@Panel
+        }
         Chip(if (s.start > ui.now) "곧 시작" else s.kind.label, kindColor(s.kind), filled = true)
         Spacer(Modifier.height(10.dp))
         val title = when {
@@ -101,26 +135,19 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
         }
         Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth()) {
-            Text("${clock(s.start)} 시작", color = C.sub, modifier = Modifier.weight(1f))
-            Text("${clock(s.end)} 끝 (${DaySim.fmtH(((s.end - ui.now).coerceAtLeast(0.0)) / 60)} 남음)", color = C.sub)
+            Text("${clock(s.end)} 끝 (${DaySim.fmtH(((s.end - ui.now).coerceAtLeast(0.0)) / 60)} 남음)", color = C.sub, modifier = Modifier.weight(1f))
+            Text("이번 일 끝 ${clock(endAll)}", color = C.sub)
         }
-        Spacer(Modifier.height(10.dp))
-        Text("이번 일 모두 마치는 시각 ${clock(endAll)}", style = MaterialTheme.typography.titleMedium)
-        vm.nextDriveTarget()?.let { to ->
-            Spacer(Modifier.height(12.dp))
-            BigButton("${vm.navi.label}로 길안내 · ${sim.world.name(to)}", { vm.navigate(to) }, Modifier.fillMaxWidth())
-        }
-        val next = sim.upcoming().take(3)
-        if (next.isNotEmpty()) {
+        if (s.job != null && s.kind != SegKind.WAIT) { Spacer(Modifier.height(10.dp)); ContainerLine(s.job!!, s) }
+        RestLine(sim, ui.now)
+        Spacer(Modifier.height(12.dp))
+        val drive = vm.nextDriveTarget()
+        if (s.start <= ui.now && s.kind != SegKind.WAIT) StopActions(vm, s, ui.tick)
+        else if (drive != null) BigButton("${vm.navi.label}로 길안내 · ${sim.world.name(drive)}", { vm.navigate(drive) }, Modifier.fillMaxWidth())
+        sim.upcoming().firstOrNull()?.let { n ->
             Spacer(Modifier.height(10.dp))
-            Text("다음", color = C.sub, style = MaterialTheme.typography.labelMedium)
-            next.forEach { n ->
-                Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(clock(n.start), fontWeight = FontWeight.SemiBold, modifier = Modifier.width(64.dp))
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(kindColor(n.kind))); Spacer(Modifier.width(8.dp))
-                    Text(if (n.kind.name.startsWith("DRIVE")) "${sim.world.name(n.to)}(으)로" else n.note.ifBlank { n.kind.label })
-                }
-            }
+            Text("다음 · ${clock(n.start)} " + (if (n.kind.name.startsWith("DRIVE")) "${sim.world.name(n.to)}(으)로" else n.note.ifBlank { n.kind.label }),
+                color = C.sub, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -129,12 +156,20 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
 @Composable
 private fun Recommendation(vm: DriverViewModel, ui: UiState) {
     val sim = vm.sim
+    var reject by remember { mutableStateOf(false) }
+    if (reject) ChoiceDialog("왜 이 일정이 어려운가요?", listOf("몸이 안 좋아요", "이 일감은 못 해요", "차량 점검이 필요해요"),
+        onPick = { r -> reject = false; vm.reject(r) },
+        extra = "배차 담당자에게 전화" to { reject = false; vm.report("배차 담당자 전화 연결", "시연에서는 전화 대신 기록만 남겨요") },
+        onDismiss = { reject = false })
     Panel(Modifier.fillMaxWidth(), color = C.panel2) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Chip(if (sim.onShift) "추천 일정" else "출근 전 미리 보기", C.brand, filled = true)
             Spacer(Modifier.weight(1f))
             if (ui.computing) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else SmallButton("다시 계산", { vm.replan() })
+            else {
+                if (sim.onShift && ui.plans.isNotEmpty()) { SmallButton("이 일정 말고", { reject = true }); Spacer(Modifier.width(6.dp)) }
+                SmallButton("다시 계산", { vm.replan() })
+            }
         }
         Spacer(Modifier.height(10.dp))
         val plans = ui.plans
@@ -149,16 +184,22 @@ private fun Recommendation(vm: DriverViewModel, ui: UiState) {
             return@Panel
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            plans.take(3).forEachIndexed { i, p -> SmallButton("${i + 1}안  ${won(p.v)}", { vm.select(i) }, selected = ui.selected == i) }
+            plans.take(3).forEachIndexed { i, p -> SmallButton("${i + 1}안 ${ui.picks.getOrNull(i)?.tag ?: won(p.v)}", { vm.select(i) }, selected = ui.selected == i) }
         }
-        val p = plans[ui.selected.coerceIn(0, plans.size - 1)]
+        val sel = ui.selected.coerceIn(0, plans.size - 1)
+        val p = plans[sel]
+        // 이 안이 기사에게 어떤 하루인지 한 줄로
+        ui.picks.getOrNull(sel)?.let { pk ->
+            Spacer(Modifier.height(12.dp))
+            Text(pk.note, style = MaterialTheme.typography.titleMedium, color = C.text,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.accent.copy(alpha = 0.12f)).padding(horizontal = 14.dp, vertical = 12.dp))
+        }
         Spacer(Modifier.height(12.dp))
         p.steps.forEachIndexed { i, st -> StepRow(sim, st, i == 0, ui.now) }
         Spacer(Modifier.height(10.dp))
         BigButton(if (sim.onShift) "이 일정 받기" else "출근하면 받을 수 있어요", { vm.accept() }, Modifier.fillMaxWidth(), enabled = sim.onShift)
         Text("첫 일만 확정하고, 끝나면 그때 상황으로 다시 추천해요.", color = C.sub, style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 10.dp))
-        WhyBox(sim, p)
+            modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -182,11 +223,13 @@ private fun StepRow(sim: DaySim, st: Step, first: Boolean, now: Double) {
                     Text("가는 길에 ${sim.world.name(b.at)}에서 빈 컨테이너 ${if (o.isExport) "받기" else "내려놓기"}", color = C.box)
                 }
                 if (o.isExport) {
-                    Text("공장 도착 ${clock(st.pickupArr!!)} · 터미널 도착 ${clock(st.portArr!!)} (공지 마감 ${clock(o.cutoff!!)})", color = C.sub)
+                    Text("공장 도착 ${clock(st.pickupArr!!)} · 터미널 도착 ${clock(st.portArr!!)}", color = C.sub)
+                    // 기사에게는 확률보다 "마감까지 여유"가 바로 와닿는다. 놓칠 위험이 경고 수준이면 색으로 알린다
                     val pm = st.pMiss ?: 0.0
                     val warn = pm >= sim.bundle.params.export_risk_warn
-                    Text("배 놓칠 확률 ${"%.0f".format(pm * 100)}%" + if (st.risk > 0) " · 위험 비용 ${won(st.risk)}" else "",
-                        color = if (warn) C.bad else if (pm > 0) C.warn else C.brand)
+                    val slack = (o.cutoff!! - st.portArr!!) / 60.0
+                    Text(if (slack >= 0) "반입 마감 ${clock(o.cutoff!!)}까지 여유 ${DaySim.fmtH(slack)}" else "반입 마감 ${clock(o.cutoff!!)}보다 ${DaySim.fmtH(-slack)} 늦음 · 배가 늦게 들어와야 실을 수 있어요",
+                        color = if (warn || slack < 0) C.bad else if (slack < 2) C.warn else C.brand, fontWeight = FontWeight.SemiBold)
                 } else if (o.isImport) {
                     val y = sim.world.delayInfo(o.vessel_row, now)
                     val av = o.avail!!; val lo = av + 60 * quantile(y, 0.1); val hi = av + 60 * quantile(y, 0.9)
@@ -202,26 +245,6 @@ private fun StepRow(sim: DaySim, st: Step, first: Boolean, now: Double) {
 }
 
 /** 왜 이 일정? 점수 = 용차 단가 − 수소 − 통행료 − 대기·노는 시간 − 늦음 − 놓침 위험 − 초과근무 */
-@Composable
-private fun WhyBox(sim: DaySim, p: Plan) {
-    val t = p.totals
-    val wage = sim.bundle.params.wait_won_h
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.panel).padding(14.dp)) {
-        Text("왜 이 일정?", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(4.dp))
-        KeyVal("용차에 안 맡겨서 아끼는 돈", "+${won(t.fare)}", C.brand)
-        KeyVal("수소 (%.0fkm)".format(t.kmEmpty + t.kmLoaded), "−${won(p.h2Cost)}")
-        KeyVal("통행료", "−${won(t.toll)}")
-        if (t.waitH + t.idleH > 0.01) KeyVal("기다리는 시간 ${DaySim.fmtH(t.waitH + t.idleH)}", "−${won((t.waitH + t.idleH) * wage)}")
-        if (t.lateCost > 1) KeyVal("수입 늦음", "−${won(t.lateCost)}")
-        if (t.risk > 1) KeyVal("배 놓칠 위험", "−${won(t.risk)}", C.warn)
-        if (p.overtimeCost > 1) KeyVal("초과근무(공장 복귀 기준)", "−${won(p.overtimeCost)}", C.warn)
-        Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(C.line))
-        KeyVal("회사가 아끼는 돈(점수)", won(p.v), C.text, bold = true)
-        Text("빈 차 %.0fkm · 짐 실은 %.0fkm".format(t.kmEmpty, t.kmLoaded), color = C.sub, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
 @Composable
 private fun DaySummary(sim: DaySim, now: Double) {
     val l = sim.ledgerAt(now)

@@ -30,17 +30,23 @@ data class UiState(
     val running: Boolean = false,
     val speed: Int = 60,
     val plans: List<Plan> = emptyList(),
+    val picks: List<Pick> = emptyList(),   // plans와 같은 순서: 각 안의 성격·기사용 설명
     val selected: Int = 0,
     val computing: Boolean = false,
     val newAlerts: Int = 0,
     val banner: Alert? = null,
     val error: String? = null,
+    val listening: Boolean = false,
 )
 
-class DriverViewModel(app: Application) : AndroidViewModel(app) {
+class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
     lateinit var sim: DaySim; private set
     lateinit var vehicle: VehicleData; private set
     val navi: NaviLauncher = IntentNavi(app)
+    /** 실제 도로 경로(남은 거리 표시용) */
+    val roads: kr.bighero.h2.driver.ui.Roads? by lazy {
+        try { kr.bighero.h2.driver.ui.Roads.parse(app.assets.open("routes.json").bufferedReader(Charsets.UTF_8).readText()) } catch (_: Exception) { null }
+    }
 
     /** 다음에 차로 갈 곳(지금 주행 중이면 그 목적지, 아니면 확정된 다음 주행의 목적지) */
     fun nextDriveTarget(): String? {
@@ -59,7 +65,9 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
     val ui: StateFlow<UiState> = _ui
     private var ticker: Job? = null
     private var seenAlerts = 0
-    private var lastPlanAt = -1e9
+    var lastPlanAt = -1e9; private set
+    /** 배차 서버와 마지막으로 맞춘 시각(시연: 시계가 움직일 때마다 받아 옴) */
+    var lastSyncAt = -1e9; private set
     private var lastPoolSize = -1
 
     /** 시연 시계 배속(시뮬레이션 1분 = 실제 몇 초가 아니라, 실제 1초에 흐르는 시뮬레이션 초) */
@@ -99,7 +107,11 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
             for (e in prefs.getString("log", "")!!.split("|").filter { it.isNotEmpty() }) {
                 val f = e.split(":", limit = 3)
                 sim.advanceTo(f[1].toDouble())
-                if (f[0] == "a") sim.accept(sim.recommend().firstOrNull { it.seq.joinToString(",") == f[2] } ?: break) else sim.goHome()
+                when (f[0]) {
+                    "a" -> sim.accept((sim.recommend() + sim.lighter()).firstOrNull { it.seq.joinToString(",") == f[2] } ?: break)
+                    "x" -> excluded += f[2]
+                    else -> sim.goHome()
+                }
             }
             sim.advanceTo(prefs.getFloat("now", sim.now.toFloat()).toDouble())
         } catch (_: Exception) { sim = DaySim(sim.bundle); prefs.edit().clear().putString("day", sim.bundle.meta.day).apply() }
@@ -108,8 +120,101 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
     private fun bump(f: (UiState) -> UiState = { it }) {
         val s = f(_ui.value)
         val nAlerts = sim.alerts.size
-        val banner = if (nAlerts > seenAlerts && sim.alerts.last().kind != AlertKind.INFO) sim.alerts.last() else s.banner
+        val banner = if (nAlerts > seenAlerts && sim.alerts.last().kind != AlertKind.INFO && sim.alerts.last().kind != AlertKind.SENT) sim.alerts.last() else s.banner
+        if (nAlerts > spokenAlerts) {
+            sim.alerts.drop(spokenAlerts).lastOrNull { it.kind != AlertKind.INFO && it.kind != AlertKind.SENT }?.let { speak(it.title) }
+            spokenAlerts = nAlerts
+        }
         _ui.value = s.copy(tick = s.tick + 1, now = sim.now, newAlerts = nAlerts - seenAlerts, banner = banner)
+    }
+
+    // ---- 기사 입장 기능: 음성 안내, 진행 알리기·문제 신고, 추천 거절, 증빙 ----
+    private var spokenAlerts = 0
+    private var lastSpokenPlan: List<String>? = null
+    var voiceOn = true; private set
+    private var ttsReady = false
+    private val tts: android.speech.tts.TextToSpeech? = try {
+        android.speech.tts.TextToSpeech(app) { st ->
+            ttsReady = st == android.speech.tts.TextToSpeech.SUCCESS
+            if (ttsReady) tts?.language = java.util.Locale.KOREAN
+        }
+    } catch (_: Throwable) { null }
+    /** 음성 안내(플레오스 TTS SDK로 바꿀 자리). 빨리 돌리는 시연(×300 이상) 중에는 말하지 않음 */
+    fun speak(text: String) {
+        if (!voiceOn || !ttsReady || _ui.value.running && _ui.value.speed > 60) return
+        try { tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "h2") } catch (_: Throwable) {}
+    }
+    fun toggleVoice() { voiceOn = !voiceOn; if (!voiceOn) try { tts?.stop() } catch (_: Throwable) {}; bump() }
+    override fun onCleared() { try { tts?.shutdown(); rec?.destroy() } catch (_: Throwable) {}; super.onCleared() }
+
+    /** 기사가 못 한다고 한 일감(다시 추천하지 않음) */
+    val excluded = HashSet<String>()
+    /** 기사가 알린 진행(구간 시작 시각 + 무엇) */
+    val done = HashSet<String>()
+
+    /** 배차 담당자에게 보내기. 시연에서는 알림 목록에 "보냄"으로 남기고, 실제로는 배차 서버로 보낸다 */
+    fun report(title: String, body: String) {
+        sim.alerts.add(Alert(sim.now, AlertKind.SENT, title, body))
+        bump()
+    }
+    fun confirm(key: String, what: String, place: String) {
+        done += key
+        report("$what 알림 보냄", "$place · ${kr.bighero.h2.core.clock(sim.now)}")
+    }
+    /** 추천 거절: 사유에 따라 다른 안을 보여 주거나 그 일감을 빼고 다시 계산 */
+    fun reject(reason: String) {
+        val p = _ui.value.plans.getOrNull(_ui.value.selected)
+        when (reason) {
+            "몸이 안 좋아요" -> {
+                val i = _ui.value.picks.indexOfFirst { it.tag == "여유 있는 일정" }
+                report("추천 거절 · $reason", if (i >= 0) "여유 있는 일정을 골라 보여 드려요" else "더 가벼운 일정이 없어요. 배차 담당자가 연락드릴 거예요")
+                if (i >= 0) select(i)
+            }
+            "차량 점검이 필요해요" -> { report("추천 거절 · $reason", "공장으로 돌아가요. 배차 담당자에게 알렸어요"); goHome() }
+            else -> {
+                val j = p?.jobs?.firstOrNull() ?: return
+                excluded += j; log("x:${sim.now}:$j")
+                report("추천 거절 · $reason", "${sim.label(j)}을(를) 빼고 다시 계산해요")
+                replan()
+            }
+        }
+    }
+
+    // ---- 음성 명령(짧은 말만): 받기 / 다시 / 도착 / 끝났어요 / 문제 ----
+    private var rec: android.speech.SpeechRecognizer? = null
+    fun listen() {
+        val r = try { rec ?: android.speech.SpeechRecognizer.createSpeechRecognizer(app).also { rec = it } } catch (_: Throwable) { return }
+        r.setRecognitionListener(object : android.speech.RecognitionListener {
+            override fun onReadyForSpeech(p: android.os.Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(v: Float) {}
+            override fun onBufferReceived(b: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onPartialResults(b: android.os.Bundle?) {}
+            override fun onEvent(t: Int, b: android.os.Bundle?) {}
+            override fun onError(e: Int) { bump { it.copy(listening = false) }; speak("잘 못 들었어요") }
+            override fun onResults(b: android.os.Bundle?) {
+                bump { it.copy(listening = false) }
+                b?.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let(::voiceCommand)
+            }
+        })
+        r.startListening(android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "ko-KR"))
+        bump { it.copy(listening = true) }
+    }
+    fun voiceCommand(t: String) {
+        val s = sim.currentSeg()
+        val stop = s != null && !s.kind.name.startsWith("DRIVE")
+        val key = s?.start?.toInt()?.toString()
+        when {
+            "받" in t && sim.idle && _ui.value.plans.isNotEmpty() -> accept()
+            "다시" in t && sim.idle -> replan()
+            "도착" in t && stop -> confirm("$key:a", "도착", sim.world.name(s!!.from))
+            ("끝" in t || "완료" in t) && stop -> confirm("$key:d", "완료", sim.world.name(s!!.from))
+            "문제" in t -> report("문제 신고 · 음성", "\"$t\"")
+            else -> speak("받기, 도착, 끝났어요, 문제 있어 중에 하나로 말해 주세요")
+        }
     }
 
     fun markAlertsRead() { seenAlerts = sim.alerts.size; bump { it.copy(banner = null) } }
@@ -119,9 +224,14 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
         if (!::sim.isInitialized) return
         _ui.value = _ui.value.copy(computing = true)
         viewModelScope.launch {
-            val plans = withContext(Dispatchers.Default) { sim.recommend() }
+            val picks = withContext(Dispatchers.Default) { pickPlans(sim, sim.recommend().filter { p -> p.jobs.none { it in excluded } }, sim.lighter().filter { p -> p.jobs.none { it in excluded } }) }
+            val plans = picks.map { it.plan }
             lastPlanAt = sim.now; lastPoolSize = sim.pool().size
-            bump { it.copy(plans = plans, selected = 0, computing = false) }
+            bump { it.copy(plans = plans, picks = picks, selected = 0, computing = false) }
+            if (sim.onShift && picks.isNotEmpty() && picks.first().plan.seq != lastSpokenPlan) {
+                lastSpokenPlan = picks.first().plan.seq
+                speak("새 추천 일정이에요. ${picks.first().note.substringBefore(" · ")}")
+            }
         }
     }
 
@@ -131,14 +241,15 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
         val p = _ui.value.plans.getOrNull(_ui.value.selected) ?: return
         log("a:${sim.now}:${p.seq.joinToString(",")}")
         sim.accept(p)
-        bump { it.copy(plans = emptyList(), selected = 0, running = true) }
+        sim.upcoming().firstOrNull { it.kind.name.startsWith("DRIVE") }?.let { speak("일정을 받았어요. ${sim.world.name(it.to)}(으)로 출발하세요. ${kr.bighero.h2.core.clock(it.end)} 도착 예정이에요.") }
+        bump { it.copy(plans = emptyList(), picks = emptyList(), selected = 0, running = true) }
         startTicker()
     }
 
     fun goHome() {
         log("h:${sim.now}:")
         sim.goHome()
-        bump { it.copy(plans = emptyList(), running = true) }
+        bump { it.copy(plans = emptyList(), picks = emptyList(), running = true) }
         startTicker()
     }
 
@@ -164,6 +275,7 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
         ticker?.cancel()
         sim = DaySim(sim.bundle)
         prefs.edit().clear().putString("day", sim.bundle.meta.day).apply()
+        excluded.clear(); done.clear(); lastSyncAt = sim.now; spokenAlerts = 0
         seenAlerts = 0
         _ui.value = UiState(loading = false, now = sim.now)
         replan()
@@ -174,6 +286,7 @@ class DriverViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun stepTo(t: Double) {
         val becameIdle = sim.advanceTo(t)
+        lastSyncAt = sim.now
         saveNow()
         if (sim.alerts.any { it.kind == AlertKind.TAKEN_BY_OTHER && it.t > lastPlanAt }) lastPoolSize = -1
         val needPlan = sim.idle && sim.onShift && (becameIdle || sim.pool().size != lastPoolSize || sim.now - lastPlanAt >= 15)

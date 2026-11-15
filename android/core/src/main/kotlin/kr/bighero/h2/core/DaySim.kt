@@ -21,7 +21,7 @@ data class Seg(
     val h2Start: Double, val h2End: Double, val job: String?, val note: String = "",
 )
 
-enum class AlertKind { BERTH_LATE, BERTH_CONFIRMED, TAKEN_BY_OTHER, EXPORT_RISK, PLAN_CHANGED, MISSED, INFO }
+enum class AlertKind { BERTH_LATE, BERTH_CONFIRMED, TAKEN_BY_OTHER, EXPORT_RISK, PLAN_CHANGED, MISSED, INFO, SENT }   // SENT: 기사가 배차 담당자에게 보낸 것
 
 data class Alert(val t: Double, val kind: AlertKind, val title: String, val body: String)
 
@@ -40,6 +40,7 @@ class DaySim(val bundle: DayBundle) {
     val board = TruthBoard(bundle)
     val world = World(bundle, board)
     val planner = Planner(world)
+    private val lightPlanner = Planner(world).also { it.maxJobs = 1 }   // 따로 둬서 추천 계산과 섞이지 않게
     private val p = bundle.params
     private val truthOrder = bundle.truth.orders.associateBy { it.id }
     private val claims = bundle.claims.associateBy { it.order }
@@ -83,6 +84,11 @@ class DaySim(val bundle: DayBundle) {
     fun recommend(): List<Plan> {
         lastPlans = planner.candidates(state(), pool(max(now, freeAt)))
         return lastPlans
+    }
+
+    /** 일감 1개짜리 가벼운 후보(기사가 쉬고 싶은 날 보여 줄 '여유 있는 일정'용). 추천 계산과 같은 입력만 씀 */
+    fun lighter(): List<Plan> {
+        return lightPlanner.candidates(state(), pool(max(now, freeAt)))
     }
 
     /** 현재 위치·수소(진행 중 구간이면 보간) */

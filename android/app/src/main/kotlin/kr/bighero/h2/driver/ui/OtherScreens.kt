@@ -78,7 +78,8 @@ fun AlertsScreen(vm: DriverViewModel, ui: UiState) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(10.dp).clip(CircleShape).background(col)); Spacer(Modifier.width(10.dp))
                     Text(clock(a.t), color = C.sub); Spacer(Modifier.width(10.dp))
-                    Text(a.title, style = MaterialTheme.typography.titleMedium)
+                    Text(a.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    if (a.kind == AlertKind.SENT) Chip("내가 보냄", C.sub)
                 }
                 Text(a.body, color = C.sub, modifier = Modifier.padding(top = 4.dp))
             }
@@ -103,12 +104,13 @@ fun H2Screen(vm: DriverViewModel, ui: UiState) {
         sim.bundle.chargers.forEach { c ->
             Panel(Modifier.fillMaxWidth()) {
                 Text(c.name, style = MaterialTheme.typography.titleLarge)
+                ChargerLive(vm, c, ui.now)
                 KeyVal("운영", "${clock(c.open)}~${clock(c.close)}" + (c.brk?.let { " (쉬는 시간 ${clock(it[0])}~${clock(it[1])})" } ?: ""))
                 KeyVal("충전 속도", "%.0fkg/시간 · 50kg 약 %.0f분".format(c.rate_kg_h, c.setup_min + 50 / c.rate_kg_h * 60))
                 KeyVal("단가", "${won(c.price_krw_kg)}/kg")
                 KeyVal("트랙터 충전기", "${c.cap}기")
             }
         }
-        Text("충전소 실시간 대기 대수(한국석유관리원 API)는 서비스 키를 넣으면 붙일 수 있게 자리만 잡아 뒀어요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
+        Text("운영 중·닫힘은 실제 운영시간으로 계산해요. 대기 대수와 예약은 시연용 예시이고, 한국석유관리원 실시간 API 키를 넣으면 실제 값으로 바뀌어요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
     }
 }

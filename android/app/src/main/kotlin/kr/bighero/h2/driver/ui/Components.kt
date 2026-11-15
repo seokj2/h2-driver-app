@@ -86,6 +86,13 @@ fun TopBar(vm: DriverViewModel, ui: UiState, wide: Boolean) {
             Text("H2 회랑 · ${sim.driver.name}", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("${sim.bundle.meta.day} · 근무 ${clock(sim.shiftStart)}~${clock(sim.shiftEnd)}", color = C.sub, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
         }
+        Column(horizontalAlignment = Alignment.End) {
+            FreshnessDot(vm, ui.now)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                MicButton(vm, ui.listening)
+                SmallButton(if (vm.voiceOn) "🔊" else "🔇", { vm.toggleVoice() })
+            }
+        }
         Text(clock(ui.now), style = if (wide) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 12.dp))
         // 시연 시계(실제 차량에서는 없앰): ▶/일시정지, 배속, 다음 일까지
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,

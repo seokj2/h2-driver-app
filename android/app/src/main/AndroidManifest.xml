@@ -10,6 +10,15 @@
     <!-- 지도 타일 받기 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 음성 명령(받기·도착·끝났어요·문제). 인식 서비스가 없는 기기에서는 버튼이 안 보임 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- 음성 안내(TTS)·음성 인식·사진 앱 찾기(Android 11+) -->
+    <queries>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
+    </queries>
 
     <application
         android:allowBackup="false"
