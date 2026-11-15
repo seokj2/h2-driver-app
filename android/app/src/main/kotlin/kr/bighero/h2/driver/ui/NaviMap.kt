@@ -183,7 +183,7 @@ fun NaviMap(sim: DaySim, ui: UiState, modifier: Modifier) {
             }
         }
         // 따라가기 / 전체 보기
-        Text(if (follow) "따라가는 중" else "다시 따라가기", color = if (follow) C.sub else Color.White, style = MaterialTheme.typography.labelLarge,
+        Text(if (follow) "내 위치" else "⌖ 내 위치로", color = if (follow) C.sub else Color.White, style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).clip(RoundedCornerShape(12.dp))
                 .background(if (follow) C.panel else C.accent).border(1.dp, C.line, RoundedCornerShape(12.dp))
