@@ -251,7 +251,8 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
         drawRoundRect(if (mine) brand else Color(0xFF7D858F), Offset(x, gateY - h * 0.03f), Size(gw, h * 0.06f), CornerRadius(6f))
         label(tm, "$g", Offset(x + gw / 2, gateY), Color.White, 12.sp, bold = true, center = true)
     }
-    label(tm, "게이트", Offset(g0 + 6 * gw * 1.25f + 6f, gateY - 8f), sub, 11.sp)
+    val gl = tm.measure("게이트", TextStyle(fontSize = 11.sp * K))
+    label(tm, "게이트", Offset(g0 + 6 * gw * 1.25f + 8f + gl.size.width / 2f, gateY), sub, 11.sp, center = true)   // 숫자 칸과 같은 높이 가운데
     // ---- 가는 길: 내 게이트 → 게이트 앞 도로 → 블록 왼쪽 도로 → 블록 옆 트럭 줄(베이 앞) ----
     val myGateX = g0 + (gateNo - 1) * gw * 1.25f + gw / 2
     val laneX = tBlock.x - laneW / 2
@@ -271,23 +272,14 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     // 내 칸 표시 핀
     drawCircle(accent.copy(alpha = 0.25f), 26f, target)
     drawCircle(Color.White, 15f, target); drawCircle(accent, 10f, target)
-    // 말풍선
-    val tag = "${loc.block} · 베이 %02d · 열 %02d".format(loc.bay, loc.row)
-    val r = tm.measure(tag, TextStyle(fontSize = 12.sp * K, fontWeight = FontWeight.Bold))
-    val bxl = (target.x - r.size.width / 2f - 10f).coerceIn(4f, planW - r.size.width - 24f); val byt = tBlock.y - r.size.height - 18f
-    drawRoundRect(text, Offset(bxl, byt), Size(r.size.width + 20f, r.size.height + 10f), CornerRadius(8f))
-    drawText(tm, tag, Offset(bxl + 10f, byt + 5f), style = TextStyle(color = Color.White, fontSize = 12.sp * K, fontWeight = FontWeight.Bold))
-
     // ---- 오른쪽: 그 줄을 옆에서 본 모습(단 = 아래부터 몇 번째, 열 = 옆으로 몇 번째) ----
     val sx = planW + w * 0.025f; val sw = w - sx - w * 0.015f
     RIGHT = w - 4f
-    label(tm, "옆에서 보면", Offset(sx, 6f), text, 13.sp, bold = true)
-    label(tm, "크레인이 ${loc.tier}단을 집어", Offset(sx, 10f + 22f * K), sub, 10.sp)
-    label(tm, "내 트럭에 실어요", Offset(sx, 12f + 38f * K), sub, 10.sp)
+    label(tm, "${loc.block} · 베이 %02d · 열 %02d".format(loc.bay, loc.row), Offset(sx, 8f), text, 13.sp, bold = true)
     val tiers = 5; val stackCols = 5
     val tl = 30f * K                                   // 왼쪽 "N단" 글자 자리
     val fx = sx + tl; val fw = sw - tl                 // 크레인 문형 안쪽
-    val gT = h * 0.20f; val gB = h * 0.60f
+    val gT = h * 0.13f; val gB = h * 0.72f
     val legW = 10f; val beamH = 16f * K
     val cellW = (fw - 2 * legW - 8f) / stackCols; val cellH = (gB - gT - beamH - 34f) / tiers
     val myCol = (loc.row - 1).mod(stackCols)
@@ -313,11 +305,6 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     val hx = colX(myCol) + cellW / 2
     drawLine(Color(0xFF555B63), Offset(hx, gT + beamH), Offset(hx, myTop - 6f), strokeWidth = 3f)
     drawRect(Color(0xFF555B63), Offset(colX(myCol) + 4f, myTop - 6f), Size(cellW - 8f, 6f))   // 집게(스프레더)
-    // 내 컨테이너 → 트럭: 크레인 다리 쪽으로 내려 실음
-    val dn = Path().apply { moveTo(colX(myCol) + cellW, myTop + cellH / 2); lineTo(fx + fw - legW - 4f, myTop + cellH / 2); lineTo(fx + fw - legW - 4f, gB + 26f * K) }
-    drawPath(dn, accent, style = Stroke(3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))))
-    val ax = fx + fw - legW - 4f; val ay = gB + 26f * K
-    drawPath(Path().apply { moveTo(ax - 8f, ay - 10f); lineTo(ax + 8f, ay - 10f); lineTo(ax, ay); close() }, accent)
     // 왼쪽 단 번호, 아래 열 번호
     for (t in 1..tiers) label(tm, "${t}단", Offset(sx + tl / 2, gB - (t - 0.5f) * cellH), if (t == loc.tier) accent else sub, 10.sp, bold = t == loc.tier, center = true)
     drawLine(sub, Offset(fx - 4f, gB), Offset(fx + fw + 4f, gB), strokeWidth = 3f)
@@ -326,9 +313,6 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
     // 내 칸을 가리키는 표시: 단 번호에서 내 칸까지 점선
     drawLine(accent, Offset(fx + legW, gB - (loc.tier - 0.5f) * cellH), Offset(colX(myCol) + 2f, gB - (loc.tier - 0.5f) * cellH), strokeWidth = 3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)))
     // 트럭이 서는 곳(크레인 다리 옆 차로)
-    val tkY = gB + 30f * K
-    sideTruck(tm, Offset(fx, tkY), fw, h * 0.08f, brand)
-    label(tm, "내 트럭 서는 곳", Offset(fx + fw / 2, tkY + h * 0.08f + 12f * K), text, 10.sp, center = true)
     // 범례(왼쪽 배치도용)
     val ly = h * 0.85f
     val lh = 18f * K
