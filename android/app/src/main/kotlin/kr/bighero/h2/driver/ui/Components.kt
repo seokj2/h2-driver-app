@@ -94,7 +94,6 @@ fun TopBar(vm: DriverViewModel, ui: UiState, wide: Boolean) {
             FreshnessDot(vm, ui.now)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                 MicButton(vm, ui.listening)
-                SmallButton(if (vm.voiceOn) "🔊" else "🔇", { vm.toggleVoice() })
             }
         }
         // 시연 시계 조작(▶/일시정지, 배속, 다음 일까지)은 평소 숨김. 시계를 길게 누르면 열고 닫음(실제 차량에서는 없앰)
