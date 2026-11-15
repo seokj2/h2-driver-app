@@ -117,9 +117,34 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
         } catch (_: Exception) { sim = DaySim(sim.bundle); prefs.edit().clear().putString("day", sim.bundle.meta.day).apply() }
     }
 
+    // ---- 순정 내비로 넘기기: 운전이 시작되면 순정 내비, 그동안은 팝업, 도착하면 우리 앱 ----
+    val popups = kr.bighero.h2.driver.vehicle.Popups(app, MainActivity::class.java)
+    /** 지금 길안내를 맡긴 운전 구간(시작 시각). 바뀔 때만 넘기고 부른다 */
+    private var handedOff: Double? = null
+    private fun fast() = _ui.value.running && _ui.value.speed > 60
+    private fun handoff() {
+        val d = kr.bighero.h2.driver.ui.drivingSeg(sim, sim.now)
+        val key = d?.start
+        if (key == handedOff) return
+        val was = handedOff
+        handedOff = key
+        if (fast()) return   // 빨리 돌리는 시연 중에는 앱을 오가지 않음
+        if (d != null) {
+            navigate(d.to)
+            popups.show("${sim.world.name(d.to)} · ${kr.bighero.h2.core.clock(d.end)} 도착", "도착하면 H2 회랑 기사 앱이 다시 열려요")
+        } else if (was != null) {
+            val s = sim.currentSeg()
+            popups.bringToFront("도착 · ${s?.let { sim.world.name(it.to) } ?: ""}", s?.note?.ifBlank { s.kind.label } ?: "다음 할 일을 확인하세요")
+        }
+    }
+
     private fun bump(f: (UiState) -> UiState = { it }) {
         val s = f(_ui.value)
         val nAlerts = sim.alerts.size
+        handoff()
+        // 운전 중(순정 내비 화면)에는 새 알림을 팝업으로
+        if (handedOff != null && nAlerts > spokenAlerts)
+            sim.alerts.drop(spokenAlerts).lastOrNull { it.kind != AlertKind.INFO && it.kind != AlertKind.SENT }?.let { popups.show(it.title, it.body) }
         val banner = if (nAlerts > seenAlerts && sim.alerts.last().kind != AlertKind.INFO && sim.alerts.last().kind != AlertKind.SENT) sim.alerts.last() else s.banner
         if (nAlerts > spokenAlerts) {
             sim.alerts.drop(spokenAlerts).lastOrNull { it.kind != AlertKind.INFO && it.kind != AlertKind.SENT }?.let { speak(it.title) }
@@ -276,7 +301,7 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
         ticker?.cancel()
         sim = DaySim(if (h2Kg == null) sim.bundle else sim.bundle.copy(driver = sim.bundle.driver.copy(h2_kg = h2Kg)))
         prefs.edit().clear().putString("day", sim.bundle.meta.day).apply()
-        excluded.clear(); done.clear(); lastSyncAt = sim.now; spokenAlerts = 0
+        excluded.clear(); done.clear(); lastSyncAt = sim.now; spokenAlerts = 0; handedOff = null
         seenAlerts = 0
         _ui.value = UiState(loading = false, now = sim.now)
         replan()

@@ -58,6 +58,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 순정 내비 위 팝업(알림) 권한(안드로이드 13+)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            try { requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 3) } catch (_: Throwable) {}
         setContent { H2Theme { App(vm) } }
     }
 }
