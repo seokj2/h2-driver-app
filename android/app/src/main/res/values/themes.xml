@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.H2Driver" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+    <color name="bg">#F4F5F7</color>
+    <color name="brand">#16A37F</color>
+</resources>

@@ -1,0 +1,35 @@
+# 앱 빌드·테스트: 엔진 테스트 + 화면 캡처 + APK (약 5~8분)
+name: android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      # ubuntu-latest에는 Android SDK가 이미 깔려 있다(ANDROID_HOME). setup-android는 sdkmanager 오류로 실패해서 뺌
+      - name: 엔진 테스트(파이썬 Planner1과 같은 답) + 화면 그리기 + APK
+        run: ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2-driver
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/screens/*.png
