@@ -3,6 +3,10 @@ package kr.bighero.h2.driver.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -71,8 +75,23 @@ fun YardPane(vm: DriverViewModel, s: Seg, modifier: Modifier = Modifier) {
             color = C.sub, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(10.dp))
         val accent = C.accent; val brand = C.brand; val sub = C.sub; val text = C.text
-        Canvas(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(YARD)) {
+        // 그림을 누르면 화면 가득 크게(다시 누르면 닫힘)
+        var zoom by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        Canvas(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(YARD).clickable { zoom = true }) {
             drawYard(tm, loc, box.gate, accent, brand, sub, text)
+        }
+        if (zoom) androidx.compose.ui.window.Dialog(onDismissRequest = { zoom = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+            Column(Modifier.fillMaxWidth(0.96f).fillMaxHeight(0.94f).clip(RoundedCornerShape(18.dp)).background(C.panel).padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(loc.text, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                    Text("닫기", style = MaterialTheme.typography.titleLarge, color = C.sub, modifier = Modifier.clickable { zoom = false }.padding(8.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+                Canvas(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp)).background(YARD).clickable { zoom = false }) {
+                    drawYard(tm, loc, box.gate, accent, brand, sub, text)
+                }
+            }
         }
     }
 }
