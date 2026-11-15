@@ -100,7 +100,6 @@ private fun LeftColumn(vm: DriverViewModel, ui: UiState) {
 private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
     val sim = vm.sim
     val s = sim.currentSeg() ?: sim.upcoming().firstOrNull()
-    val endAll = sim.segs.lastOrNull()?.end ?: ui.now
     Panel(Modifier.fillMaxWidth(), color = C.panel2) {
         if (s == null) { Text("다음 일을 준비 중", style = MaterialTheme.typography.headlineSmall); return@Panel }
         // 운전 중: 다음 할 일 + 남은 거리 + 도착 시각만 크게(주행 중 주의 분산 줄이기)
@@ -151,10 +150,7 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
             Box(Modifier.fillMaxWidth(f.toFloat()).fillMaxHeight().clip(CircleShape).background(kindColor(s.kind)))
         }
         Spacer(Modifier.height(6.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Text("${clock(s.end)} 끝 (${DaySim.fmtH(((s.end - ui.now).coerceAtLeast(0.0)) / 60)} 남음)", color = C.sub, modifier = Modifier.weight(1f))
-            Text("이번 일 끝 ${clock(endAll)}", color = C.sub)
-        }
+        Text("${clock(s.end)} 끝 (${DaySim.fmtH(((s.end - ui.now).coerceAtLeast(0.0)) / 60)} 남음)", color = C.sub)
         if (s.job != null && s.kind != SegKind.WAIT) { Spacer(Modifier.height(10.dp)); ContainerLine(s.job!!, s) }
         RestLine(sim, ui.now)
         Spacer(Modifier.height(12.dp))

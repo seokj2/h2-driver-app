@@ -389,7 +389,7 @@ fun ChargePane(vm: DriverViewModel, s: Seg, now: Double, modifier: Modifier = Mo
         // 오늘 한 일·남은 일·퇴근
         val l = sim.ledgerAt(now)
         val left = sim.segs.filter { it.start >= now && it.job != null }.mapNotNull { it.job }.toSet().size
-        Text("오늘 ${l.jobsDone}건 끝 · 남은 일 ${left}건 · 이번 일정 끝 ${clk(sim.segs.last().end)} · 퇴근 ${clk(sim.shiftEnd)}",
+        Text("오늘 ${l.jobsDone}건 끝 · 남은 일 ${left}건 · 퇴근 ${clk(sim.shiftEnd)}",
             style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
         Text("근처 · 화장실 1분 · 편의점 3분 · 기사식당 5분", color = C.sub, style = MaterialTheme.typography.bodyMedium)
