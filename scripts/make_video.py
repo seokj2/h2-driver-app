@@ -17,9 +17,35 @@ def card(name, lines, sec):
     p = os.path.join(tmp, name); im.save(p); seq.append((p, sec))
 card("a_intro.png", [("H2 회랑 기사", f_big, (5, 5, 5)), ("현대 엑시언트 기사를 위한 차량 내 배차·충전 도우미 · 플레오스 Connect", f_mid, (60, 60, 60)),
                      ("시연: 울산–부산신항 컨테이너 운송, 엑시언트 수소전기 트랙터 \"수소 5호\"의 하루(2026-07-16)", f_mid, (107, 107, 107))], 4.0)
+# 운전 중 장면: 차량에서는 순정 내비가 앞에 오고 우리 앱은 팝업만 띄운다.
+# 바탕은 플레오스 Connect 에뮬레이터(v2.1.0)에서 찍은 순정 내비 화면(scripts/pleos_navi.png, 다른 앱 알림과 시계만 지움)이고,
+# 그 위에 앱이 그린 팝업(흰 카드)을 오려 얹고, 상태 표시줄 시계를 시연 시각으로 적는다.
+navi_bg = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "pleos_navi.png")).convert("RGB")
+f_clk = ImageFont.truetype(os.path.join(font_dir, "kr500.ttf"), 30)
+dpath = os.path.join(src, "drive.txt")
+drives = dict(l.split("|", 1) for l in open(dpath, encoding="utf-8").read().splitlines() if l) if os.path.exists(dpath) else {}
+def on_navi(im, hhmm):
+    # 팝업은 왼쪽 아래 흰 카드(가로 520dp = 168~948px 고정). 왼쪽 안쪽 여백 칸(x=185)을 따라 위·아래 끝을 찾는다
+    px = im.load(); WH = (255, 255, 255); box = None
+    if px[185, 1000] == WH and px[560, 1000] == WH:
+        t_ = 1000; b_ = 1000
+        while t_ > 0 and px[185, t_ - 1] == WH: t_ -= 1
+        while b_ < H - 1 and px[560, b_ + 1] == WH: b_ += 1
+        box = (168, t_ - 2, 948, b_ + 1)
+    bg = navi_bg.copy()
+    if box:
+        card = im.crop(box)
+        w, h = card.size; x0 = 641 + (1279 - w) // 2; y0 = 96
+        sh = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle((x0 - 4, y0 + 2, x0 + w + 4, y0 + h + 10), 22, fill=(0, 0, 0, 60))
+        bg = Image.alpha_composite(bg.convert("RGBA"), sh).convert("RGB")
+        m = Image.new("L", card.size, 0); ImageDraw.Draw(m).rounded_rectangle((0, 0, w - 1, h - 1), 18, fill=255)
+        bg.paste(card, (x0, y0), m)
+    ImageDraw.Draw(bg).text((1905, 33), hhmm, font=f_clk, fill=(20, 20, 20), anchor="rm")
+    return bg
 for fn, sec, cap in rows:
     im = Image.open(os.path.join(src, fn)).convert("RGB")
     if im.size != (W, H): im = im.resize((W, H), Image.LANCZOS)
+    if fn in drives: im = on_navi(im, drives[fn])
     ov = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
     tw = d.textlength(cap, font=f_cap)
     x0 = (W - tw) / 2 - 36; x1 = (W + tw) / 2 + 36

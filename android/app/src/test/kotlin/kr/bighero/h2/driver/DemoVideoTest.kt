@@ -39,7 +39,10 @@ class DemoVideoTest {
         val f = "%04d.png".format(++n)
         @OptIn(ExperimentalRoborazziApi::class) captureScreenRoboImage(File(dir, f).path)
         list.append("$f|$sec|$caption\n")
+        // 운전 중 장면: 영상에서는 플레오스 순정 내비 화면 위에 우리 팝업을 얹어 보여 준다(make_video.py)
+        if (kr.bighero.h2.driver.ui.drivingSeg(vm().sim, vm().sim.now) != null) drives.append("$f|${clock(vm().sim.now)}\n")
     }
+    private val drives = StringBuilder()
     private fun tab(name: String) { rule.onAllNodesWithText(name)[0].performClick(); settle() }
     private fun ui(f: DriverViewModel.() -> Unit) = rule.runOnUiThread { vm().f() }
 
@@ -101,7 +104,7 @@ class DemoVideoTest {
         var jobs = 0
         while (jobs < 3 && vm().ui.value.plans.isNotEmpty() && vm().sim.now < vm().sim.shiftEnd) {
             ui { accept(); if (ui.value.running) toggleRun() }
-            shot(2.5, if (jobs == 0) "이 일정 받기 · 첫 일만 확정하고 출발" else "다음 일정 받기")
+            shot(2.5, if (jobs == 0) "이 일정 받기 → 순정 내비로 길안내가 넘어가요" else "다음 일정 받기 → 다시 순정 내비로")
             if (jobs == 0) {
                 ui { advance(40.0) }
                 shot(3.0, "운전 중 · 길안내는 순정 내비, 우리 앱은 작은 팝업으로 도착 시각·알림만")
@@ -129,5 +132,6 @@ class DemoVideoTest {
         val chEnd = vm().sim.segs.firstOrNull { it.kind == SegKind.CHARGE }?.end
         if (chEnd != null) drive(4.0, chEnd + 6)
         File(dir, "list.txt").writeText(list.toString())
+        File(dir, "drive.txt").writeText(drives.toString())
     }
 }
