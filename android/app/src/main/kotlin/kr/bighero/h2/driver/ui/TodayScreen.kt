@@ -49,7 +49,6 @@ import kr.bighero.h2.driver.UiState
 fun TodayScreen(vm: DriverViewModel, ui: UiState, wide: Boolean) {
     val sim = vm.sim
     // 운전 중에는 순정 내비가 길안내, 우리 앱은 팝업만(도착하면 다시 이 화면으로)
-    drivingSeg(sim, ui.now)?.let { DrivingScreen(vm, ui, it); return }
     if (wide) Row(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             LeftColumn(vm, ui)
@@ -128,8 +127,6 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
             }
             Spacer(Modifier.height(12.dp))
             RestLine(sim, ui.now)
-            Spacer(Modifier.height(12.dp))
-            BigButton("${vm.navi.label}로 길안내", { vm.navigate(s.to) }, Modifier.fillMaxWidth())
             return@Panel
         }
         Chip(if (s.start > ui.now) "곧 시작" else s.kind.label, kindColor(s.kind), filled = true)
@@ -158,7 +155,6 @@ private fun CurrentCard(vm: DriverViewModel, ui: UiState) {
         Spacer(Modifier.height(12.dp))
         val drive = vm.nextDriveTarget()
         if (s.start <= ui.now && s.kind != SegKind.WAIT) StopActions(vm, s, ui.tick)
-        else if (drive != null) BigButton("${vm.navi.label}로 길안내 · ${sim.world.name(drive)}", { vm.navigate(drive) }, Modifier.fillMaxWidth())
         sim.upcoming().firstOrNull()?.let { n ->
             Spacer(Modifier.height(10.dp))
             Text("다음 · ${clock(n.start)} " + (if (n.kind.name.startsWith("DRIVE")) "${sim.world.name(n.to)}(으)로" else n.note.ifBlank { n.kind.label }),

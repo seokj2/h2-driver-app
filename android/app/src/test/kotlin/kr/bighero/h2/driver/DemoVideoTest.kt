@@ -40,7 +40,6 @@ class DemoVideoTest {
         @OptIn(ExperimentalRoborazziApi::class) captureScreenRoboImage(File(dir, f).path)
         list.append("$f|$sec|$caption\n")
         // 운전 중 장면: 영상에서는 플레오스 순정 내비 화면 위에 우리 팝업을 얹어 보여 준다(make_video.py)
-        if (kr.bighero.h2.driver.ui.drivingSeg(vm().sim, vm().sim.now) != null) drives.append("$f|${clock(vm().sim.now)}\n")
     }
     private val drives = StringBuilder()
     private fun tab(name: String) { rule.onAllNodesWithText(name)[0].performClick(); settle() }
@@ -64,7 +63,7 @@ class DemoVideoTest {
             val seg = sim.currentSeg()
             if (!showedStop && seg != null && seg.kind == SegKind.TERMINAL && seg.job != null) {
                 showedStop = true
-                shot(4.0, "터미널 도착 · 앱이 다시 앞으로 와서 컨테이너가 있는 블록·베이·열·단과 가는 길")
+                shot(4.0, "터미널 도착 · 지도 대신 컨테이너가 있는 블록·베이·열·단과 가는 길")
                 click("자세히"); shot(3.0, "컨테이너 정보 · 번호·크기·무게·게이트·예약 시간")
                 click("접기"); click("도착했어요")
                 click("문제 있음"); shot(3.0, "문제 있음 · 사유를 누르거나 배차 담당자에게 전화"); rule.onAllNodesWithText("닫기").let { it[it.fetchSemanticsNodes().size - 1].performClick() }; settle()
@@ -72,7 +71,7 @@ class DemoVideoTest {
                 click("상·하차 끝났어요"); shot(3.5, "상·하차 끝 · 컨테이너 사진과 전자 인수증 서명"); click("보내기")
             }
             if (chargeShots == 0 && seg != null && seg.kind == SegKind.WAIT && sim.bundle.chargers.any { it.id == seg.from }) {
-                chargeShots = -1; shot(3.5, "충전소 도착 · 앱이 다시 앞으로 와서 충전 화면: 내 차례(문 여는 시각), 다음 일, 남은 일과 퇴근")
+                chargeShots = -1; shot(3.5, "충전소 도착 · 지도 대신 충전 화면: 내 차례(문 여는 시각), 다음 일, 남은 일과 퇴근")
             }
             if (seg != null && seg.kind == SegKind.CHARGE) {
                 val f = (sim.now - seg.start) / (seg.end - seg.start)
@@ -104,10 +103,10 @@ class DemoVideoTest {
         var jobs = 0
         while (jobs < 3 && vm().ui.value.plans.isNotEmpty() && vm().sim.now < vm().sim.shiftEnd) {
             ui { accept(); if (ui.value.running) toggleRun() }
-            shot(2.5, if (jobs == 0) "이 일정 받기 → 순정 내비로 길안내가 넘어가요" else "다음 일정 받기 → 다시 순정 내비로")
+            shot(2.5, if (jobs == 0) "이 일정 받기 · 첫 일만 확정하고 출발" else "다음 일정 받기")
             if (jobs == 0) {
                 ui { advance(40.0) }
-                shot(3.0, "운전 중 · 길안내는 순정 내비, 우리 앱은 작은 팝업으로 도착 시각·알림만")
+                shot(3.0, "운전 중 · 남은 거리와 도착 시각만 크게, 음성으로도 안내")
                 tab("전체 일정"); shot(3.0, "전체 일정 · 지난·지금·앞으로 할 구간")
                 tab("오늘")
             }

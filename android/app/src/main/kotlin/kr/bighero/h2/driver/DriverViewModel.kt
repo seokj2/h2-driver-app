@@ -143,7 +143,7 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun bump(f: (UiState) -> UiState = { it }) {
         val s = f(_ui.value)
         val nAlerts = sim.alerts.size
-        handoff()
+        // 순정 내비 자동 넘기기는 끔(에뮬레이터 순정 내비가 외부 목적지를 받지 않음). handoff()는 플레오스 NaviHelper 연동 때 다시 켬
         // 운전 중(순정 내비 화면)에는 새 알림을 팝업으로
         if (handedOff != null && nAlerts > spokenAlerts)
             sim.alerts.drop(spokenAlerts).lastOrNull { it.kind != AlertKind.INFO && it.kind != AlertKind.SENT }?.let { popups.show(it.title, it.body) }
