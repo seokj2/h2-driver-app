@@ -176,7 +176,7 @@ fun ProofDialog(job: String, onDone: (photo: Boolean, sign: Boolean) -> Unit, on
                     { try { cam.launch(null) } catch (_: Exception) { noCam = true } }, Modifier.weight(1f))
             }
             if (noCam) Text("이 기기에는 카메라가 없어 사진은 건너뛰어요.", color = C.sub, style = MaterialTheme.typography.labelMedium)
-            Text("인수증 서명 (손가락으로)", color = C.sub)
+            Text("인수증 서명", color = C.sub)
             Canvas(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).border(1.dp, C.line, RoundedCornerShape(12.dp))
                 .pointerInput(Unit) {
                     detectDragGestures(onDragStart = { cur = listOf(it) }, onDragEnd = { lines.add(cur); cur = emptyList() }) { ch, _ -> cur = cur + ch.position }
