@@ -123,6 +123,25 @@ class DaySim(val bundle: DayBundle) {
         alerts.add(Alert(now, AlertKind.INFO, "일정 확정", commit.joinToString(" → ") { label(it.id) }))
     }
 
+    /** 사고·고장: 지금 구간까지만 하고 앞으로 확정된 일은 취소(다른 트럭으로 넘김), 그 자리에서 holdMin 동안 사고 처리. 그 뒤 다시 추천 */
+    fun accident(holdMin: Double = 60.0): List<String> {
+        val cur = currentSeg()
+        val keepEnd = cur?.end ?: now
+        val dropped = segs.filter { it.start >= keepEnd - 1e-6 }
+        segs.removeAll(dropped.toSet())
+        val kept = segs.mapNotNull { it.job }.toSet()
+        val gaveUp = dropped.mapNotNull { it.job }.distinct().filter { it !in kept }
+        taken.removeAll(gaveUp.toSet())
+        loc = segs.lastOrNull()?.to ?: driver.start_loc
+        h2 = segs.lastOrNull()?.h2End ?: driver.h2_kg
+        segs.add(Seg(SegKind.WAIT, keepEnd, keepEnd + holdMin, loc, loc, h2, h2, null, "사고 처리"))
+        freeAt = keepEnd + holdMin
+        committed = null
+        alerts.add(Alert(now, AlertKind.PLAN_CHANGED, "사고 신고 · 일정 변경",
+            if (gaveUp.isEmpty()) "사고 처리 뒤 다시 추천해요" else gaveUp.joinToString(", ") { label(it) } + " → 다른 트럭으로 넘겼어요. 사고 처리 뒤 다시 추천해요"))
+        return gaveUp
+    }
+
     /** 일이 없을 때 공장으로 돌아가기(신항 쪽이면 가는 길에 빈 컨테이너 받기) */
     fun goHome() {
         var t = max(now, freeAt)

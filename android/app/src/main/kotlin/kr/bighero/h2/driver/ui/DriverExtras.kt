@@ -133,7 +133,7 @@ fun StopActions(vm: DriverViewModel, s: Seg, @Suppress("UNUSED_PARAMETER") tick:
         BigButton("문제 있음", { problem = true }, Modifier.weight(0.6f), color = C.warn)
     }
     if (problem) ChoiceDialog("어떤 문제가 있나요?", listOf("터미널 대기가 길어요", "컨테이너에 문제가 있어요", "차량 고장·사고", "길이 막혀 늦어요"),
-        onPick = { r -> problem = false; vm.report("문제 신고 · $r", "$place · 배차 담당자에게 보냈어요") },
+        onPick = { r -> problem = false; if (r == "차량 고장·사고") vm.accident() else vm.report("문제 신고 · $r", "$place · 배차 담당자에게 보냈어요") },
         extra = "배차 담당자에게 전화" to { problem = false; vm.report("배차 담당자 전화 연결", "시연에서는 전화 대신 기록만 남겨요") },
         onDismiss = { problem = false })
     if (proof) ProofDialog(s.job ?: "", onDone = { photo, sign ->

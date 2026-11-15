@@ -80,7 +80,7 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
                     val name = app.assets.list("")!!.first { it.startsWith("day_") && it.endsWith(".json") }
                     DayBundle.parse(app.assets.open(name).bufferedReader(Charsets.UTF_8).readText())
                 }
-                sim = DaySim(b)
+                sim = DaySim(b.copy(driver = b.driver.copy(h2_kg = 34.0)))   // 시연: 수소 50%로 출근 → 하루 중간에 충전이 들어가는 일정
                 withContext(Dispatchers.Default) { restore() }
                 vehicle = SimVehicleData { sim }
                 seenAlerts = sim.alerts.size
@@ -183,6 +183,13 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
     fun report(title: String, body: String) {
         sim.alerts.add(Alert(sim.now, AlertKind.SENT, title, body))
         bump()
+    }
+    /** 차량 고장·사고: 남은 일을 다른 트럭으로 넘기고, 사고 처리 뒤 다시 추천 */
+    fun accident() {
+        log("a:${sim.now}:")
+        sim.accident(60.0)
+        report("문제 신고 · 차량 고장·사고", "배차 담당자에게 보냈어요. 남은 일정을 다시 짜요")
+        bump { it.copy(plans = emptyList(), picks = emptyList()) }
     }
     fun confirm(key: String, what: String, place: String) {
         done += key
@@ -301,7 +308,7 @@ class DriverViewModel(private val app: Application) : AndroidViewModel(app) {
     /** 처음부터. h2Kg를 주면 출근 때 수소 잔량을 바꾼 시연(예: 충전이 필요한 날) */
     fun restart(h2Kg: Double? = null) {
         ticker?.cancel()
-        sim = DaySim(if (h2Kg == null) sim.bundle else sim.bundle.copy(driver = sim.bundle.driver.copy(h2_kg = h2Kg)))
+        sim = DaySim(if (h2Kg == null) sim.bundle.copy(driver = sim.bundle.driver.copy(h2_kg = 34.0)) else sim.bundle.copy(driver = sim.bundle.driver.copy(h2_kg = h2Kg)))
         prefs.edit().clear().putString("day", sim.bundle.meta.day).apply()
         excluded.clear(); done.clear(); lastSyncAt = sim.now; spokenAlerts = 0; handedOff = null
         seenAlerts = 0

@@ -106,7 +106,6 @@ fun TopBar(vm: DriverViewModel, ui: UiState, wide: Boolean) {
             else SmallButton("×${ui.speed}", { vm.setSpeed(vm.speeds[(vm.speeds.indexOf(ui.speed) + 1) % vm.speeds.size]) })
             SmallButton("⏭", { vm.skipToNext() })
             if (wide) SmallButton("처음", { vm.restart() })
-            if (wide) SmallButton("수소 20%", { vm.restart(14.0) })   // 수소가 적은 날: 충전이 들어간 일정
         }
     }
 }

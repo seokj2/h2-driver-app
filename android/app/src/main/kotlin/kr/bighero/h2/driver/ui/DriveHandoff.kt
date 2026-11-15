@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -150,6 +152,14 @@ private fun DrivePopup(vm: DriverViewModel, ui: UiState, d: Seg, modifier: Modif
             color = C.sub, style = MaterialTheme.typography.titleMedium)
         val rest = drivenSinceBreak(sim, ui.now)
         if (rest >= 105) { Spacer(Modifier.height(8.dp)); RestLine(sim, ui.now) }
+        // 운전 중에도 문제 신고(사고·고장이면 남은 일을 넘기고 일정을 다시 짬)
+        var problem by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        Spacer(Modifier.height(10.dp))
+        Text("문제 있음", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(C.warn).clickable { problem = true }.padding(horizontal = 18.dp, vertical = 10.dp))
+        if (problem) ChoiceDialog("어떤 문제가 있나요?", listOf("차량 고장·사고", "길이 막혀 늦어요"),
+            onPick = { r -> problem = false; if (r == "차량 고장·사고") vm.accident() else vm.report("문제 신고 · $r", "배차 담당자에게 보냈어요") },
+            onDismiss = { problem = false })
     }
 }
 

@@ -184,7 +184,7 @@ private fun DrawScope.drawYard(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acce
 private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, accent: Color, brand: Color, sub: Color, text: Color, w: Float, h: Float, zoomed: Boolean) {
     RIGHT = Float.MAX_VALUE
     K = 18f / 11.sp.toPx()   // 11sp 글자 = 가상 화면 18(높이의 3%)
-    val planW = w * (if (w / h < 1.35f) 0.66f else 0.73f)                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
+    val planW = if (!zoomed) w else w * (if (w / h < 1.35f) 0.66f else 0.73f)                     // 왼쪽: 위에서 본 배치도, 오른쪽: 단면
     // ---- 바다·배·안벽 ----
     val seaH = h * 0.10f
     drawRect(SEA, Offset.Zero, Size(planW, seaH))
@@ -290,6 +290,7 @@ private fun DrawScope.drawYardV(tm: TextMeasurer, loc: YardLoc, gateNo: Int, acc
         drawRoundRect(Color.White, Offset(tBlock.x + 2f, tBlock.y + 2f), Size(m.size.width + 8f, m.size.height.toFloat()), CornerRadius(4f))
         label(tm, nm, Offset(tBlock.x + 6f, tBlock.y + 2f), accent, 10.sp, bold = true)
     }
+    if (!zoomed) return   // 작은 화면: 위에서 본 배치도만
     // ---- 오른쪽: 그 줄을 옆에서 본 모습(단 = 아래부터 몇 번째, 열 = 옆으로 몇 번째) ----
     val sx = planW + w * 0.025f; val sw = w - sx - w * 0.015f
     RIGHT = w - 4f
