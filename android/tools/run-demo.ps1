@@ -1,4 +1,4 @@
-# 데스크탑에서 한 번에: 플레오스 에뮬레이터 켜기 → 최신 APK 받아 설치 → 권한 주고 앱 실행 → (선택) 화면 녹화
+﻿# 데스크탑에서 한 번에: 플레오스 에뮬레이터 켜기 → 최신 APK 받아 설치 → 권한 주고 앱 실행 → (선택) 화면 녹화
 #   powershell -ExecutionPolicy Bypass -File run-demo.ps1            # 켜고 설치하고 실행
 #   powershell -ExecutionPolicy Bypass -File run-demo.ps1 -Record    # 실행 뒤 3분 녹화, 바탕화면에 h2_emulator.mp4
 #   -Apk C:\경로\앱.apk 를 주면 내려받지 않고 그 파일을 설치
